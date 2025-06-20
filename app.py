@@ -200,7 +200,7 @@ LOGIN_TEMPLATE = '''
             box-sizing: border-box;
         }        body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: url('/background.svg') center/cover no-repeat fixed;
+            background: url('https://www.ratlamrelaycentre.co.in/jameafront.svg') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             display: flex;
@@ -1400,7 +1400,7 @@ WEBINAR_TEMPLATE = '''
 
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: url('/background.svg') center/cover no-repeat fixed;
+            background: url('https://www.ratlamrelaycentre.co.in/jameafront.svg') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -2794,7 +2794,7 @@ NO_WEBINAR_TEMPLATE = '''
 
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: url('/background.svg') center/cover no-repeat fixed;
+            background: url('https://www.ratlamrelaycentre.co.in/jameafront.svg') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
