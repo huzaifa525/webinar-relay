@@ -3,3 +3,6 @@ Flask-WTF
 gunicorn
 flask-socketio
 requests
+psycopg2-binary
+SQLAlchemy
+Flask-SQLAlchemy

@@ -7,150 +7,271 @@ session management, and an admin panel for managing authorized users.
 
 Author: Huzaifa
 Date: August 9, 2025
-Version: 2.0.0 - Mobile Optimized
+Version: 3.0.0 - PostgreSQL Database Integration
 """
 
 from flask import Flask, render_template_string, request, redirect, url_for, session, flash, jsonify, send_file
-import json
 import os
 from datetime import datetime, timedelta
 import hashlib
 import secrets
 from functools import wraps
+from flask_sqlalchemy import SQLAlchemy
+import json
 
 app = Flask(__name__)
 app.secret_key = 'Huzaifa53'
 
-# File paths for data storage
-ITS_FILE = 'its_ids.json'
-SESSIONS_FILE = 'active_sessions.json'
-ADMIN_FILE = 'admin_credentials.json'
-WEBINAR_SETTINGS_FILE = 'webinar_settings.json'
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:bHaJHoNZuiNzjhOMRkiCwlsgvxsHyUxM@yamabiko.proxy.rlwy.net:37305/railway'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
 # Admin credentials (you can modify these)
 ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = 'Huzaifa5253@'  # Change this in production
 
-def init_files():
-    """Initialize data files if they don't exist"""
-    if not os.path.exists(ITS_FILE):
-        with open(ITS_FILE, 'w') as f:
-            json.dump([], f)
+# Database Models
+class ItsID(db.Model):
+    __tablename__ = 'its_ids'
+    id = db.Column(db.String(8), primary_key=True)
+    added_at = db.Column(db.DateTime, default=datetime.now)
     
-    if not os.path.exists(SESSIONS_FILE):
-        with open(SESSIONS_FILE, 'w') as f:
-            json.dump({}, f)
+    def __repr__(self):
+        return f'<ItsID {self.id}>'
+
+class ActiveSession(db.Model):
+    __tablename__ = 'active_sessions'
+    token = db.Column(db.String(64), primary_key=True)
+    its_id = db.Column(db.String(8), db.ForeignKey('its_ids.id'), nullable=False)
+    login_time = db.Column(db.DateTime, default=datetime.now)
+    last_activity = db.Column(db.DateTime, default=datetime.now)
     
-    if not os.path.exists(ADMIN_FILE):
+    def __repr__(self):
+        return f'<Session {self.token} for {self.its_id}>'
+
+class AdminCredential(db.Model):
+    __tablename__ = 'admin_credentials'
+    username = db.Column(db.String(50), primary_key=True)
+    password_hash = db.Column(db.String(64), nullable=False)
+    
+    def __repr__(self):
+        return f'<Admin {self.username}>'
+
+class WebinarSetting(db.Model):
+    __tablename__ = 'webinar_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    embed_url = db.Column(db.String(500), nullable=False)
+    webinar_title = db.Column(db.String(200), nullable=False)
+    webinar_description = db.Column(db.Text, nullable=True)
+    webinar_date = db.Column(db.String(100), nullable=True)
+    webinar_time = db.Column(db.String(100), nullable=True)
+    webinar_speaker = db.Column(db.String(200), nullable=True)
+    no_webinar = db.Column(db.Boolean, default=False)
+    
+    def __repr__(self):
+        return f'<WebinarSettings {self.webinar_title}>'
+
+def init_database():
+    """Initialize database tables and default data if they don't exist"""
+    # Create tables if they don't exist
+    db.create_all()
+    
+    # Check if admin exists, if not create default admin
+    admin = AdminCredential.query.filter_by(username=ADMIN_USERNAME).first()
+    if not admin:
         admin_hash = hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
-        with open(ADMIN_FILE, 'w') as f:
-            json.dump({'username': ADMIN_USERNAME, 'password_hash': admin_hash}, f)
-            
-    if not os.path.exists(WEBINAR_SETTINGS_FILE):
-        default_settings = {
-            "embed_url": "https://www.youtube.com/embed/GXRL7PcPbOA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
-            "webinar_title": "Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal",
-            "webinar_description": "Welcome to the live portal of Anjuman e Hakimi Najmi Mohallah Ratlam. This stream is authorized for ITS members only. Please do not share this link with others.",
-            "webinar_date": "August 9-15, 2025",
-            "webinar_time": "7:30 AM - 12:30 PM IST",
-            "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
-            "no_webinar": False
-        }
-        with open(WEBINAR_SETTINGS_FILE, 'w') as f:
-            json.dump(default_settings, f, indent=2)
+        admin = AdminCredential(username=ADMIN_USERNAME, password_hash=admin_hash)
+        db.session.add(admin)
+        db.session.commit()
+    
+    # Check if webinar settings exist, if not create default settings
+    settings = WebinarSetting.query.first()
+    if not settings:
+        default_settings = WebinarSetting(
+            embed_url="https://www.youtube.com/embed/GXRL7PcPbOA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
+            webinar_title="Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal",
+            webinar_description="Welcome to the live portal of Anjuman e Hakimi Najmi Mohallah Ratlam. This stream is authorized for ITS members only. Please do not share this link with others.",
+            webinar_date="August 9-15, 2025",
+            webinar_time="7:30 AM - 12:30 PM IST",
+            webinar_speaker="His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
+            no_webinar=False
+        )
+        db.session.add(default_settings)
+        db.session.commit()
 
 def load_its_ids():
-    """Load ITS IDs from file"""
+    """Load ITS IDs from database"""
     try:
-        with open(ITS_FILE, 'r') as f:
-            return set(json.load(f))
-    except:
+        its_ids = ItsID.query.all()
+        return {its_id.id for its_id in its_ids}
+    except Exception as e:
+        print(f"Error loading ITS IDs: {e}")
         return set()
 
-def save_its_ids(its_ids):
-    """Save ITS IDs to file"""
-    with open(ITS_FILE, 'w') as f:
-        json.dump(list(its_ids), f, indent=2)
+def save_its_id(its_id):
+    """Save a new ITS ID to database"""
+    try:
+        # Check if ID already exists
+        existing = ItsID.query.get(its_id)
+        if not existing:
+            new_id = ItsID(id=its_id)
+            db.session.add(new_id)
+            db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error saving ITS ID: {e}")
+        db.session.rollback()
+        return False
+
+def delete_its_id(its_id):
+    """Delete an ITS ID from database"""
+    try:
+        existing = ItsID.query.get(its_id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error deleting ITS ID: {e}")
+        db.session.rollback()
+        return False
 
 def load_sessions():
-    """Load active sessions from file"""
+    """Load active sessions from database as a dictionary"""
     try:
-        with open(SESSIONS_FILE, 'r') as f:
-            return json.load(f)
-    except:
+        sessions = {}
+        active_sessions = ActiveSession.query.all()
+        
+        for session in active_sessions:
+            sessions[session.token] = {
+                'its_id': session.its_id,
+                'login_time': session.login_time.isoformat(),
+                'last_activity': session.last_activity.isoformat()
+            }
+        return sessions
+    except Exception as e:
+        print(f"Error loading sessions: {e}")
         return {}
 
-def save_sessions(sessions):
-    """Save active sessions to file"""
-    with open(SESSIONS_FILE, 'w') as f:
-        json.dump(sessions, f, indent=2)
+def save_session(token, its_id, login_time, last_activity):
+    """Save a session to database"""
+    try:
+        # Check if session already exists
+        existing = ActiveSession.query.get(token)
+        if existing:
+            existing.last_activity = last_activity
+            db.session.commit()
+        else:
+            new_session = ActiveSession(
+                token=token,
+                its_id=its_id,
+                login_time=login_time,
+                last_activity=last_activity
+            )
+            db.session.add(new_session)
+            db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error saving session: {e}")
+        db.session.rollback()
+        return False
+
+def delete_session(token):
+    """Delete a session from database"""
+    try:
+        session = ActiveSession.query.get(token)
+        if session:
+            db.session.delete(session)
+            db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error deleting session: {e}")
+        db.session.rollback()
+        return False
 
 def cleanup_expired_sessions():
     """Remove expired or inactive sessions"""
-    sessions = load_sessions()
     current_time = datetime.now()
     
-    expired_sessions = []
-    for session_id, session_data in sessions.items():
-        # Check if session has exceeded maximum lifetime (24 hours)
-        session_time = datetime.fromisoformat(session_data['login_time'])
-        if current_time - session_time > timedelta(hours=24):  # 24 hour session timeout
-            expired_sessions.append(session_id)
-            continue
+    try:
+        # Find sessions expired by total time (24 hours)
+        expired_by_time = ActiveSession.query.filter(
+            current_time - ActiveSession.login_time > timedelta(hours=24)
+        ).all()
+        
+        # Find sessions expired by inactivity (30 minutes)
+        expired_by_inactivity = ActiveSession.query.filter(
+            current_time - ActiveSession.last_activity > timedelta(minutes=30)
+        ).all()
+        
+        # Combine and delete all expired sessions
+        expired_sessions = set(expired_by_time + expired_by_inactivity)
+        
+        for session in expired_sessions:
+            db.session.delete(session)
             
-        # Check if session is inactive (30 minutes of inactivity)
-        if 'last_activity' in session_data:
-            last_activity = datetime.fromisoformat(session_data['last_activity'])
-            if current_time - last_activity > timedelta(minutes=30):  # 30 minute inactivity timeout
-                expired_sessions.append(session_id)
-    
-    for session_id in expired_sessions:
-        del sessions[session_id]
-    
-    save_sessions(sessions)
+        db.session.commit()
+    except Exception as e:
+        print(f"Error cleaning up sessions: {e}")
+        db.session.rollback()
 
 def is_its_logged_in(its_id):
     """Check if ITS ID already has an active session"""
     cleanup_expired_sessions()
-    sessions = load_sessions()
     
-    for session_data in sessions.values():
-        if session_data['its_id'] == str(its_id):
-            return True
-    return False
+    # Check if any active session exists for this ITS ID
+    session_exists = ActiveSession.query.filter_by(its_id=str(its_id)).first() is not None
+    return session_exists
 
 def create_session(its_id):
     """Create a new session for ITS ID"""
-    sessions = load_sessions()
     session_token = secrets.token_urlsafe(32)
+    now = datetime.now()
     
-    sessions[session_token] = {
-        'its_id': str(its_id),
-        'login_time': datetime.now().isoformat(),
-        'last_activity': datetime.now().isoformat()
-    }
-    
-    save_sessions(sessions)
-    return session_token
+    try:
+        new_session = ActiveSession(
+            token=session_token,
+            its_id=str(its_id),
+            login_time=now,
+            last_activity=now
+        )
+        db.session.add(new_session)
+        db.session.commit()
+        return session_token
+    except Exception as e:
+        print(f"Error creating session: {e}")
+        db.session.rollback()
+        return None
 
 def verify_session(session_token):
     """Verify if session token is valid and update last activity"""
     cleanup_expired_sessions()
-    sessions = load_sessions()
     
-    if session_token in sessions:
-        # Update last activity time
-        sessions[session_token]['last_activity'] = datetime.now().isoformat()
-        save_sessions(sessions)
-        return True
-    return False
+    try:
+        session = ActiveSession.query.get(session_token)
+        if session:
+            # Update last activity time
+            session.last_activity = datetime.now()
+            db.session.commit()
+            return True
+        return False
+    except Exception as e:
+        print(f"Error verifying session: {e}")
+        return False
 
 def logout_session(session_token):
     """Remove session"""
-    sessions = load_sessions()
-    if session_token in sessions:
-        del sessions[session_token]
-        save_sessions(sessions)
+    try:
+        session = ActiveSession.query.get(session_token)
+        if session:
+            db.session.delete(session)
+            db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error logging out session: {e}")
+        db.session.rollback()
+        return False
 
 def admin_required(f):
     """Decorator for admin-only routes"""
@@ -162,26 +283,33 @@ def admin_required(f):
     return decorated_function
 
 def load_webinar_settings():
-    """Load webinar settings from file"""
+    """Load webinar settings from database"""
     try:
-        with open(WEBINAR_SETTINGS_FILE, 'r') as f:
-            settings = json.load(f)
-            
-            # Explicitly handle the no_webinar flag
-            if 'no_webinar' not in settings:
-                settings['no_webinar'] = False
-            else:
-                # Convert to a proper boolean
-                if isinstance(settings['no_webinar'], str):
-                    settings['no_webinar'] = settings['no_webinar'].lower() in ('true', 'yes', 'y', '1')
-                else:
-                    settings['no_webinar'] = bool(settings['no_webinar'])
-                    
-            print(f"Loaded no_webinar value: {settings['no_webinar']} (type: {type(settings['no_webinar'])})")
-            return settings
+        settings = WebinarSetting.query.first()
+        if settings:
+            return {
+                "embed_url": settings.embed_url,
+                "webinar_title": settings.webinar_title,
+                "webinar_description": settings.webinar_description,
+                "webinar_date": settings.webinar_date,
+                "webinar_time": settings.webinar_time,
+                "webinar_speaker": settings.webinar_speaker,
+                "no_webinar": settings.no_webinar
+            }
+        else:
+            # Return default settings if nothing in database
+            return {
+                "embed_url": "https://www.youtube.com/embed/GXRL7PcPbOA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
+                "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay",
+                "webinar_description": "Welcome to the live relay of Ashara Mubaraka 1447. This stream is authorized for ITS members only. Please do not share this link with others.",
+                "webinar_date": "June 18-27, 2025",
+                "webinar_time": "7:30 AM - 12:30 PM IST",
+                "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
+                "no_webinar": False
+            }
     except Exception as e:
         print(f"Error loading webinar settings: {e}")
-        # Return default settings if file doesn't exist or can't be read
+        # Return default settings if there's an error
         return {
             "embed_url": "https://www.youtube.com/embed/GXRL7PcPbOA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
             "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay",
@@ -193,9 +321,37 @@ def load_webinar_settings():
         }
 
 def save_webinar_settings(settings):
-    """Save webinar settings to file"""
-    with open(WEBINAR_SETTINGS_FILE, 'w') as f:
-        json.dump(settings, f, indent=2)
+    """Save webinar settings to database"""
+    try:
+        webinar_settings = WebinarSetting.query.first()
+        
+        # If settings exists, update it, otherwise create new
+        if webinar_settings:
+            webinar_settings.embed_url = settings["embed_url"]
+            webinar_settings.webinar_title = settings["webinar_title"]
+            webinar_settings.webinar_description = settings["webinar_description"]
+            webinar_settings.webinar_date = settings["webinar_date"]
+            webinar_settings.webinar_time = settings["webinar_time"]
+            webinar_settings.webinar_speaker = settings["webinar_speaker"]
+            webinar_settings.no_webinar = settings["no_webinar"]
+        else:
+            webinar_settings = WebinarSetting(
+                embed_url=settings["embed_url"],
+                webinar_title=settings["webinar_title"],
+                webinar_description=settings["webinar_description"],
+                webinar_date=settings["webinar_date"],
+                webinar_time=settings["webinar_time"],
+                webinar_speaker=settings["webinar_speaker"],
+                no_webinar=settings["no_webinar"]
+            )
+            db.session.add(webinar_settings)
+            
+        db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error saving webinar settings: {e}")
+        db.session.rollback()
+        return False
 
 # Login page template (keeping original)
 LOGIN_TEMPLATE = '''
@@ -2463,7 +2619,7 @@ def api_status():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     """Home page / login route"""
-    init_files()
+    init_database()
     
     if 'session_token' in request.cookies:
         session_token = request.cookies.get('session_token')
@@ -2484,6 +2640,9 @@ def index():
             return render_template_string(LOGIN_TEMPLATE, error="This ITS ID is already logged in on another device.")
         
         session_token = create_session(its_id)
+        if not session_token:
+            return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
+        
         response = redirect(url_for('webinar'))
         response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
         
@@ -2503,28 +2662,26 @@ def webinar():
         response.delete_cookie('session_token')
         return response
     
-    sessions = load_sessions()
-    its_id = sessions[session_token]['its_id']
-    
+    # Get session from database
     try:
-        with open(WEBINAR_SETTINGS_FILE, 'r') as f:
-            webinar_data = json.load(f)
-            
-            if 'no_webinar' in webinar_data and webinar_data['no_webinar'] == True:
-                return render_template_string(NO_WEBINAR_TEMPLATE, its_id=its_id, session_token=session_token)
-            else:
-                return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=its_id, session_token=session_token, **webinar_data)
+        session = ActiveSession.query.get(session_token)
+        if not session:
+            response = redirect(url_for('index'))
+            response.delete_cookie('session_token')
+            return response
+        
+        its_id = session.its_id
+        webinar_data = load_webinar_settings()
+        
+        if webinar_data.get('no_webinar', False):
+            return render_template_string(NO_WEBINAR_TEMPLATE, its_id=its_id, session_token=session_token)
+        else:
+            return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=its_id, session_token=session_token, **webinar_data)
     except Exception as e:
-        print(f"Error loading webinar settings: {e}")
-        default_settings = {
-            "embed_url": "https://www.youtube.com/embed/GXRL7PcPbOA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
-            "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay",
-            "webinar_description": "Welcome to the live relay of Ashara Mubaraka 1447. This stream is authorized for ITS members only. Please do not share this link with others.",
-            "webinar_date": "June 18-27, 2025",
-            "webinar_time": "7:30 AM - 12:30 PM IST",
-            "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)"
-        }
-        return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=its_id, session_token=session_token, **default_settings)
+        print(f"Error in webinar route: {e}")
+        response = redirect(url_for('index'))
+        response.delete_cookie('session_token')
+        return response
 
 @app.route('/logout')
 def logout():
@@ -2541,16 +2698,22 @@ def logout():
 def force_logout():
     """Force logout from all devices"""
     if 'session_token' in request.cookies:
-        session_token = request.cookies.get('session_token')
-        sessions = load_sessions()
-        if session_token in sessions:
-            its_id = sessions[session_token]['its_id']
-            # Remove all sessions for this ITS ID
-            expired_sessions = [s_id for s_id, s_data in sessions.items() 
-                               if s_data['its_id'] == its_id]
-            for s_id in expired_sessions:
-                del sessions[s_id]
-            save_sessions(sessions)
+        try:
+            session_token = request.cookies.get('session_token')
+            session = ActiveSession.query.get(session_token)
+            
+            if session:
+                its_id = session.its_id
+                # Find and delete all sessions for this ITS ID
+                sessions_to_delete = ActiveSession.query.filter_by(its_id=its_id).all()
+                
+                for s in sessions_to_delete:
+                    db.session.delete(s)
+                
+                db.session.commit()
+        except Exception as e:
+            print(f"Error in force logout: {e}")
+            db.session.rollback()
     
     response = redirect(url_for('index'))
     response.delete_cookie('session_token')
@@ -3278,17 +3441,19 @@ def admin_login():
         password = request.form.get('password', '')
         
         try:
-            with open(ADMIN_FILE, 'r') as f:
-                admin_data = json.load(f)
-        except:
-            return render_template_string(ADMIN_LOGIN_TEMPLATE, error="Admin credentials not configured.")
-        
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        if username == admin_data['username'] and password_hash == admin_data['password_hash']:
-            session['admin_logged_in'] = True
-            return redirect(url_for('admin_dashboard'))
-        else:
-            return render_template_string(ADMIN_LOGIN_TEMPLATE, error="Invalid username or password.")
+            admin = AdminCredential.query.filter_by(username=username).first()
+            if not admin:
+                return render_template_string(ADMIN_LOGIN_TEMPLATE, error="Invalid username or password.")
+            
+            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            if password_hash == admin.password_hash:
+                session['admin_logged_in'] = True
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return render_template_string(ADMIN_LOGIN_TEMPLATE, error="Invalid username or password.")
+        except Exception as e:
+            print(f"Error in admin login: {e}")
+            return render_template_string(ADMIN_LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
     
     return render_template_string(ADMIN_LOGIN_TEMPLATE)
 
@@ -3307,15 +3472,23 @@ def admin_add_its():
     if not its_id or len(its_id) != 8 or not its_id.isdigit():
         return redirect(url_for('admin_dashboard') + '?message=Invalid ITS ID format&type=error')
     
-    its_ids = load_its_ids()
-    
-    if its_id in its_ids:
-        return redirect(url_for('admin_dashboard') + '?message=ITS ID already exists&type=error')
-    
-    its_ids.add(its_id)
-    save_its_ids(its_ids)
-    
-    return redirect(url_for('admin_dashboard') + '?message=ITS ID added successfully&type=success')
+    try:
+        # Check if ID already exists
+        existing = ItsID.query.get(its_id)
+        
+        if existing:
+            return redirect(url_for('admin_dashboard') + '?message=ITS ID already exists&type=error')
+        
+        # Add new ITS ID
+        new_id = ItsID(id=its_id)
+        db.session.add(new_id)
+        db.session.commit()
+        
+        return redirect(url_for('admin_dashboard') + '?message=ITS ID added successfully&type=success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding ITS ID: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error adding ITS ID: {str(e)}&type=error')
 
 @app.route('/admin/update_webinar_settings', methods=['POST'])
 def admin_update_webinar_settings():
@@ -3324,24 +3497,29 @@ def admin_update_webinar_settings():
         return redirect(url_for('admin_login'))
     
     try:
-        with open(WEBINAR_SETTINGS_FILE, 'r') as f:
-            current_settings = json.load(f)
+        # Get current settings from database
+        settings = WebinarSetting.query.first()
         
-        current_settings['embed_url'] = request.form.get('embed_url', current_settings.get('embed_url', ''))
-        current_settings['webinar_title'] = request.form.get('webinar_title', current_settings.get('webinar_title', ''))
-        current_settings['webinar_description'] = request.form.get('webinar_description', current_settings.get('webinar_description', ''))
-        current_settings['webinar_date'] = request.form.get('webinar_date', current_settings.get('webinar_date', ''))
-        current_settings['webinar_time'] = request.form.get('webinar_time', current_settings.get('webinar_time', ''))
-        current_settings['webinar_speaker'] = request.form.get('webinar_speaker', current_settings.get('webinar_speaker', ''))
-        current_settings['no_webinar'] = 'no_webinar' in request.form
-        current_settings['last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        if not settings:
+            settings = WebinarSetting()
+            db.session.add(settings)
+            
+        # Update settings with form data
+        settings.embed_url = request.form.get('embed_url', '')
+        settings.webinar_title = request.form.get('webinar_title', '')
+        settings.webinar_description = request.form.get('webinar_description', '')
+        settings.webinar_date = request.form.get('webinar_date', '')
+        settings.webinar_time = request.form.get('webinar_time', '')
+        settings.webinar_speaker = request.form.get('webinar_speaker', '')
+        settings.no_webinar = 'no_webinar' in request.form
         
-        with open(WEBINAR_SETTINGS_FILE, 'w') as f:
-            json.dump(current_settings, f, indent=2)
+        db.session.commit()
         
         return redirect(url_for('admin_dashboard') + '?message=Webinar settings updated successfully&type=success')
     
     except Exception as e:
+        db.session.rollback()
+        print(f"Error updating webinar settings: {e}")
         return redirect(url_for('admin_dashboard') + f'?message=Error updating settings: {str(e)}&type=error')
 
 @app.route('/admin')
@@ -3354,41 +3532,50 @@ def admin_index():
 @admin_required
 def admin_dashboard():
     """Enhanced admin dashboard route"""
-    its_ids = set(load_its_ids())
-    sessions = load_sessions()
-    webinar_settings = load_webinar_settings()
-    
-    # Get active sessions by ITS ID
-    sessions_status = set()
-    sessions_data = []
-    for session_token, session_data in sessions.items():
-        sessions_status.add(session_data['its_id'])
-        # Format session data for display
-        login_time = datetime.fromisoformat(session_data['login_time'])
-        sessions_data.append({
-            'its_id': session_data['its_id'],
-            'login_time_formatted': login_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'session_token': session_token
-        })
-    
-    # Prepare stats
-    stats = {
-        'total_its': len(its_ids),
-        'active_sessions': len(sessions),
-        'total_sessions': len(sessions)
-    }
-    
-    message = request.args.get('message', '')
-    message_type = request.args.get('type', 'success')
-    
-    return render_template_string(ADMIN_DASHBOARD_TEMPLATE, 
-                               stats=stats,
-                               its_ids=sorted(its_ids),
-                               sessions_status=sessions_status,
-                               sessions_data=sessions_data,
-                               message=message,
-                               message_type=message_type,
-                               settings=webinar_settings)
+    try:
+        # Fetch all ITS IDs from database
+        its_ids_list = ItsID.query.all()
+        its_ids = {its_id.id for its_id in its_ids_list}
+        
+        # Get active sessions from database
+        active_sessions = ActiveSession.query.all()
+        
+        # Get webinar settings
+        webinar_settings = load_webinar_settings()
+        
+        # Get active sessions by ITS ID
+        sessions_status = set()
+        sessions_data = []
+        for session in active_sessions:
+            sessions_status.add(session.its_id)
+            # Format session data for display
+            sessions_data.append({
+                'its_id': session.its_id,
+                'login_time_formatted': session.login_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'session_token': session.token
+            })
+        
+        # Prepare stats
+        stats = {
+            'total_its': len(its_ids),
+            'active_sessions': len(active_sessions),
+            'total_sessions': len(active_sessions)
+        }
+        
+        message = request.args.get('message', '')
+        message_type = request.args.get('type', 'success')
+        
+        return render_template_string(ADMIN_DASHBOARD_TEMPLATE, 
+                                  stats=stats,
+                                  its_ids=sorted(its_ids),
+                                  sessions_status=sessions_status,
+                                  sessions_data=sessions_data,
+                                  message=message,
+                                  message_type=message_type,
+                                  settings=webinar_settings)
+    except Exception as e:
+        print(f"Error in admin dashboard: {e}")
+        return f"Error loading admin dashboard: {str(e)}"
 
 @app.route('/admin/add_bulk_its', methods=['POST'])
 def admin_add_bulk_its():
@@ -3398,23 +3585,34 @@ def admin_add_bulk_its():
     if not bulk_its:
         return redirect(url_for('admin_dashboard') + '?message=No ITS IDs provided&type=error')
     
-    its_ids = load_its_ids()
-    new_ids = set()
+    try:
+        # Get existing IDS IDs
+        existing_ids = {its_id.id for its_id in ItsID.query.all()}
+        new_ids = set()
+        
+        # Split by lines or commas and validate each ID
+        for line in bulk_its.splitlines():
+            for its_id in line.split(','):
+                its_id = its_id.strip()
+                if len(its_id) == 8 and its_id.isdigit() and its_id not in existing_ids:
+                    new_ids.add(its_id)
+        
+        if not new_ids:
+            return redirect(url_for('admin_dashboard') + '?message=No valid ITS IDs to add&type=error')
+        
+        # Add new ITS IDs to database
+        for its_id in new_ids:
+            new_id = ItsID(id=its_id)
+            db.session.add(new_id)
+        
+        db.session.commit()
+        
+        return redirect(url_for('admin_dashboard') + f'?message=Added {len(new_ids)} ITS IDs successfully&type=success')
     
-    # Split by lines or commas and validate each ID
-    for line in bulk_its.splitlines():
-        for its_id in line.split(','):
-            its_id = its_id.strip()
-            if len(its_id) == 8 and its_id.isdigit() and its_id not in its_ids:
-                new_ids.add(its_id)
-    
-    if not new_ids:
-        return redirect(url_for('admin_dashboard') + '?message=No valid ITS IDs to add&type=error')
-    
-    its_ids.update(new_ids)
-    save_its_ids(its_ids)
-    
-    return redirect(url_for('admin_dashboard') + f'?message=Added {len(new_ids)} ITS IDs successfully&type=success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding bulk ITS IDs: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error adding ITS IDs: {str(e)}&type=error')
 
 @app.route('/admin/delete_its', methods=['POST'])
 def admin_delete_its():
@@ -3424,43 +3622,69 @@ def admin_delete_its():
     if not its_id or len(its_id) != 8 or not its_id.isdigit():
         return redirect(url_for('admin_dashboard') + '?message=Invalid ITS ID format&type=error')
     
-    its_ids = load_its_ids()
-    
-    if its_id not in its_ids:
-        return redirect(url_for('admin_dashboard') + '?message=ITS ID not found&type=error')
-    
-    its_ids.remove(its_id)
-    save_its_ids(its_ids)
-    
-    return redirect(url_for('admin_dashboard') + '?message=ITS ID deleted successfully&type=success')
+    try:
+        # Find ITS ID in database
+        id_to_delete = ItsID.query.get(its_id)
+        
+        if not id_to_delete:
+            return redirect(url_for('admin_dashboard') + '?message=ITS ID not found&type=error')
+        
+        # Delete any associated sessions first
+        ActiveSession.query.filter_by(its_id=its_id).delete()
+        
+        # Delete the ITS ID
+        db.session.delete(id_to_delete)
+        db.session.commit()
+        
+        return redirect(url_for('admin_dashboard') + '?message=ITS ID deleted successfully&type=success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting ITS ID: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error deleting ITS ID: {str(e)}&type=error')
 
 @app.route('/admin/delete_all_its', methods=['POST'])
 def admin_delete_all_its():
     """Delete all ITS IDs"""
-    its_ids = load_its_ids()
-    
-    if not its_ids:
-        return redirect(url_for('admin_dashboard') + '?message=No ITS IDs to delete&type=error')
-    
-    count = len(its_ids)
-    its_ids.clear()
-    save_its_ids(its_ids)
-    
-    return redirect(url_for('admin_dashboard') + f'?message=Deleted {count} ITS IDs successfully&type=success')
+    try:
+        # Count ITS IDs for message
+        count = ItsID.query.count()
+        
+        if count == 0:
+            return redirect(url_for('admin_dashboard') + '?message=No ITS IDs to delete&type=error')
+            
+        # Delete all active sessions first
+        ActiveSession.query.delete()
+        
+        # Delete all ITS IDs
+        ItsID.query.delete()
+        
+        db.session.commit()
+        
+        return redirect(url_for('admin_dashboard') + f'?message=Deleted {count} ITS IDs successfully&type=success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting all ITS IDs: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error deleting ITS IDs: {str(e)}&type=error')
 
 @app.route('/admin/clear_sessions', methods=['POST'])
 def admin_clear_sessions():
     """Clear all active sessions"""
-    sessions = load_sessions()
-    
-    if not sessions:
-        return redirect(url_for('admin_dashboard') + '?message=No active sessions to clear&type=error')
-    
-    count = len(sessions)
-    sessions.clear()
-    save_sessions(sessions)
-    
-    return redirect(url_for('admin_dashboard') + f'?message=Cleared {count} active sessions successfully&type=success')
+    try:
+        # Count sessions for message
+        count = ActiveSession.query.count()
+        
+        if count == 0:
+            return redirect(url_for('admin_dashboard') + '?message=No active sessions to clear&type=error')
+        
+        # Delete all sessions
+        ActiveSession.query.delete()
+        db.session.commit()
+        
+        return redirect(url_for('admin_dashboard') + f'?message=Cleared {count} active sessions successfully&type=success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error clearing sessions: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error clearing sessions: {str(e)}&type=error')
 
 @app.route('/admin/kick_session', methods=['POST'])
 def admin_kick_session():
@@ -3470,17 +3694,29 @@ def admin_kick_session():
     if not session_token:
         return redirect(url_for('admin_dashboard') + '?message=Invalid session token&type=error')
     
-    sessions = load_sessions()
-    
-    if session_token not in sessions:
-        return redirect(url_for('admin_dashboard') + '?message=Session not found&type=error')
-    
-    its_id = sessions[session_token]['its_id']
-    del sessions[session_token]
-    save_sessions(sessions)
-    return redirect(url_for('admin_dashboard') + f'?message=Kicked user {its_id} successfully&type=success')
+    try:
+        # Find session by token
+        session = ActiveSession.query.get(session_token)
+        
+        if not session:
+            return redirect(url_for('admin_dashboard') + '?message=Session not found&type=error')
+        
+        its_id = session.its_id
+        
+        # Delete the session
+        db.session.delete(session)
+        db.session.commit()
+        
+        return redirect(url_for('admin_dashboard') + f'?message=Kicked user {its_id} successfully&type=success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error kicking session: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error kicking session: {str(e)}&type=error')
 
 
 if __name__ == '__main__':
-    init_files()
+    # Create database tables
+    with app.app_context():
+        db.create_all()
+        init_database()
     app.run(debug=True, host='0.0.0.0', port=5000)
