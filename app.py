@@ -1,12 +1,12 @@
 """
-Ratlam Relay Centre - Webinar Access Portal (Improved Mobile Version)
+Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal
 
-A Flask web application that provides authorized access to webinar streams
+A Flask web application that provides authorized access to live streams
 for registered ITS members. Features include user authentication via ITS ID,
 session management, and an admin panel for managing authorized users.
 
-Author: Huzaifa (Improved by Claude)
-Date: July 29, 2025
+Author: Huzaifa
+Date: August 9, 2025
 Version: 2.0.0 - Mobile Optimized
 """
 
@@ -49,9 +49,9 @@ def init_files():
     if not os.path.exists(WEBINAR_SETTINGS_FILE):
         default_settings = {
             "embed_url": "https://www.youtube.com/embed/GXRL7PcPbOA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
-            "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay",
-            "webinar_description": "Welcome to the live relay of Ashara Mubaraka 1447. This stream is authorized for ITS members only. Please do not share this link with others.",
-            "webinar_date": "June 18-27, 2025",
+            "webinar_title": "Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal",
+            "webinar_description": "Welcome to the live portal of Anjuman e Hakimi Najmi Mohallah Ratlam. This stream is authorized for ITS members only. Please do not share this link with others.",
+            "webinar_date": "August 9-15, 2025",
             "webinar_time": "7:30 AM - 12:30 PM IST",
             "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
             "no_webinar": False
@@ -189,7 +189,7 @@ LOGIN_TEMPLATE = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ratlam Relay Centre - Login</title>
+    <title>Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal - Login</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -238,7 +238,7 @@ LOGIN_TEMPLATE = '''
         
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: url('https://www.ratlamrelaycentre.co.in/jameafront.svg') center/cover no-repeat fixed;
+            background: url('https://i.ibb.co/JWTvVh2f/background-1.png') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             display: flex;
@@ -325,19 +325,21 @@ LOGIN_TEMPLATE = '''
         }
 
         .logo-icon {
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
             border-radius: var(--radius-md);
-            background: var(--gradient-brand);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            color: white;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 2rem;
+            overflow: hidden;
             box-shadow: var(--shadow-brand);
             border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .logo-text {
@@ -345,7 +347,7 @@ LOGIN_TEMPLATE = '''
         }
 
         .logo-title {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: 700;
             color: var(--text-primary);
             font-family: 'Montserrat', sans-serif;
@@ -498,6 +500,25 @@ LOGIN_TEMPLATE = '''
             text-decoration: none;
             font-size: 0.9rem;
             font-weight: 500;
+        }
+            
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+        }
+            
+        .footer .heart {
+            color: #ff4d4d;
+            display: inline-block;
+            animation: heartbeat 1.5s ease infinite;
+        }
+            
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
             transition: var(--transition-normal);
         }
 
@@ -538,14 +559,16 @@ LOGIN_TEMPLATE = '''
     <div class="login-container">
         <div class="login-header">
             <div class="logo-container">
-                <div class="logo-icon">R</div>
+                <div class="logo-icon">
+                    <img src="https://i.ibb.co/nqfBrmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
+                </div>
                 <div class="logo-text">
-                    <div class="logo-title">Ratlam Relay Centre</div>
-                    <div class="logo-subtitle">Ashara 1447</div>
+                    <div class="logo-title">Anjuman e Hakimi</div>
+                    <div class="logo-subtitle">Najmi Mohallah Ratlam</div>
                 </div>
             </div>
-            <h1 class="login-title">Access Portal</h1>
-            <p class="login-subtitle">Enter your ITS ID to join the webinar</p>
+            <h1 class="login-title">Live Portal</h1>
+            <p class="login-subtitle">Enter your ITS ID for access</p>
         </div>
 
         {% if error %}
@@ -573,6 +596,10 @@ LOGIN_TEMPLATE = '''
 
         <div class="admin-link">
             <a href="{{ url_for('admin_login') }}">Admin Panel</a>
+        </div>
+        
+        <div class="footer">
+            Developed with <span class="heart">♥</span> by Huzefa Nalkheda wala
         </div>
     </div>
 
@@ -608,7 +635,7 @@ WEBINAR_TEMPLATE_IMPROVED = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>{{ webinar_title }} - Ratlam Relay Centre</title>
+    <title>{{ webinar_title }} - Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal</title>
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -1510,10 +1537,12 @@ WEBINAR_TEMPLATE_IMPROVED = '''
 
     <header class="header" id="header">
         <div class="logo-wrapper">
-            <div class="logo-icon">R</div>
+            <div class="logo-icon">
+                <img src="https://i.ibb.co/nqfBrmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
+            </div>
             <div class="logo-text">
-                <div class="logo-title">Ratlam Relay Centre</div>
-                <div class="logo-subtitle">Ashara 1447 Webinar Series</div>
+                <div class="logo-title">Anjuman e Hakimi</div>
+                <div class="logo-subtitle">Najmi Mohallah Ratlam Live Portal</div>
             </div>
         </div>
         <div class="user-info">
@@ -1917,6 +1946,17 @@ WEBINAR_TEMPLATE_IMPROVED = '''
             }, 150);
         });
     </script>
+    
+    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(9, 13, 27, 0.8); backdrop-filter: blur(10px); padding: 10px; text-align: center; font-size: 0.85rem; color: rgba(255, 255, 255, 0.65); border-top: 1px solid rgba(212, 175, 55, 0.2);">
+        Developed with <span style="color: #ff4d4d; display: inline-block; animation: heartbeat 1.5s ease infinite;">♥</span> by Huzefa Nalkheda wala
+    </div>
+    
+    <style>
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+    </style>
 </body>
 </html>
 '''
@@ -1928,7 +1968,7 @@ NO_WEBINAR_TEMPLATE = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ratlam Relay Centre - No Webinar Available</title>
+    <title>Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal - No Stream Available</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -2131,10 +2171,12 @@ NO_WEBINAR_TEMPLATE = '''
 
     <div class="header">
         <div class="logo-container">
-            <div class="logo-icon">R</div>
+            <div class="logo-icon">
+                <img src="https://i.ibb.co/nqfBrmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
+            </div>
             <div class="logo-text">
-                <h1>Ratlam Relay Centre</h1>
-                <p>Ashara 1447</p>
+                <h1>Anjuman e Hakimi</h1>
+                <p>Najmi Mohallah Ratlam</p>
             </div>
         </div>
         <div class="user-info">
@@ -2146,13 +2188,24 @@ NO_WEBINAR_TEMPLATE = '''
     <div class="main-content">
         <div class="no-webinar-message">
             <div class="status-badge">Status: Offline</div>
-            <h1 class="no-webinar-title">No Webinar Available</h1>
+            <h1 class="no-webinar-title">No Stream Available</h1>
             <p class="no-webinar-description">
-                There is currently no webinar scheduled at this time. The webinar stream is temporarily offline. 
+                There is currently no live stream scheduled at this time. The stream is temporarily offline. 
                 Please check back later for updates. Thank you for your patience.
             </p>
         </div>
     </div>
+
+    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(9, 13, 27, 0.8); backdrop-filter: blur(10px); padding: 10px; text-align: center; font-size: 0.85rem; color: rgba(255, 255, 255, 0.65); border-top: 1px solid rgba(212, 175, 55, 0.2);">
+        Developed with <span style="color: #ff4d4d; display: inline-block; animation: heartbeat 1.5s ease infinite;">♥</span> by Huzefa Nalkheda wala
+    </div>
+    
+    <style>
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+    </style>
 
     <script>
         // Disable right-click and dev tools
@@ -2290,7 +2343,7 @@ ADMIN_LOGIN_TEMPLATE = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Ratlam Relay Centre</title>
+    <title>Admin Panel - Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -2496,7 +2549,7 @@ ADMIN_DASHBOARD_TEMPLATE = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Ratlam Relay Centre</title>
+    <title>Admin Dashboard - Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
@@ -2979,6 +3032,17 @@ ADMIN_DASHBOARD_TEMPLATE = '''
             </div>
         </div>
     </div>
+    
+    <div style="text-align: center; margin-top: 20px; padding: 10px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.65);">
+        Developed with <span style="color: #ff4d4d; display: inline-block; animation: heartbeat 1.5s ease infinite;">♥</span> by Huzefa Nalkheda wala
+    </div>
+    
+    <style>
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+    </style>
 </body>
 </html>
 '''
