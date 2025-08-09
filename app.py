@@ -698,7 +698,7 @@ WEBINAR_TEMPLATE_IMPROVED = '''
 
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: url('https://www.ratlamrelaycentre.co.in/jameafront.svg') center/cover no-repeat fixed;
+            background: url('https://i.ibb.co/JWTvVh2f/background-1.png') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -1538,7 +1538,7 @@ WEBINAR_TEMPLATE_IMPROVED = '''
     <header class="header" id="header">
         <div class="logo-wrapper">
             <div class="logo-icon">
-                <img src="https://i.ibb.co/nqfBrmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
+                <img src="https://i.ibb.co/nqfBrMmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
             </div>
             <div class="logo-text">
                 <div class="logo-title">Anjuman e Hakimi</div>
@@ -1998,7 +1998,7 @@ NO_WEBINAR_TEMPLATE = '''
 
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: url('https://www.ratlamrelaycentre.co.in/jameafront.svg') center/cover no-repeat fixed;
+            background: url('https://i.ibb.co/JWTvVh2f/background-1.png') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -2172,7 +2172,7 @@ NO_WEBINAR_TEMPLATE = '''
     <div class="header">
         <div class="logo-container">
             <div class="logo-icon">
-                <img src="https://i.ibb.co/nqfBrmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
+                <img src="https://i.ibb.co/nqfBrMmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
             </div>
             <div class="logo-text">
                 <h1>Anjuman e Hakimi</h1>
