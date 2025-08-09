@@ -1,8 +1,0 @@
-{
-  "geo_blocking_enabled": false,
-  "allowed_countries": [
-    "IN"
-  ],
-  "blocked_message": "Access is restricted from your location. Please contact the administrator.",
-  "last_updated": "2025-07-29 16:27:28"
-}
