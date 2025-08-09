@@ -61,7 +61,7 @@ class AdminCredential(db.Model):
 class WebinarSetting(db.Model):
     __tablename__ = 'webinar_settings'
     id = db.Column(db.Integer, primary_key=True)
-    embed_url = db.Column(db.String(500), nullable=False)
+    youtube_video_id = db.Column(db.String(50), nullable=False)  # Just the YouTube video ID
     webinar_title = db.Column(db.String(200), nullable=False)
     webinar_description = db.Column(db.Text, nullable=True)
     webinar_date = db.Column(db.String(100), nullable=True)
@@ -71,6 +71,11 @@ class WebinarSetting(db.Model):
     
     def __repr__(self):
         return f'<WebinarSettings {self.webinar_title}>'
+        
+    @property
+    def embed_url(self):
+        """Generate the full embed URL from the video ID"""
+        return f"https://www.youtube.com/embed/{self.youtube_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1"
 
 def init_database():
     """Initialize database tables and default data if they don't exist"""
@@ -89,7 +94,7 @@ def init_database():
     settings = WebinarSetting.query.first()
     if not settings:
         default_settings = WebinarSetting(
-            embed_url="https://www.youtube.com/embed/GXRL7PcPbOA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
+            youtube_video_id="GXRL7PcPbOA",  # Just the YouTube video ID
             webinar_title="Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal",
             webinar_description="Welcome to the live portal of Anjuman e Hakimi Najmi Mohallah Ratlam. This stream is authorized for ITS members only. Please do not share this link with others.",
             webinar_date="August 9-15, 2025",
@@ -288,7 +293,8 @@ def load_webinar_settings():
         settings = WebinarSetting.query.first()
         if settings:
             return {
-                "embed_url": settings.embed_url,
+                "embed_url": settings.embed_url,  # Use the computed property for backward compatibility
+                "youtube_video_id": settings.youtube_video_id,
                 "webinar_title": settings.webinar_title,
                 "webinar_description": settings.webinar_description,
                 "webinar_date": settings.webinar_date,
@@ -298,8 +304,10 @@ def load_webinar_settings():
             }
         else:
             # Return default settings if nothing in database
+            default_video_id = "GXRL7PcPbOA"
             return {
-                "embed_url": "https://www.youtube.com/embed/GXRL7PcPbOA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
+                "embed_url": f"https://www.youtube.com/embed/{default_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
+                "youtube_video_id": default_video_id,
                 "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay",
                 "webinar_description": "Welcome to the live relay of Ashara Mubaraka 1447. This stream is authorized for ITS members only. Please do not share this link with others.",
                 "webinar_date": "June 18-27, 2025",
@@ -310,8 +318,10 @@ def load_webinar_settings():
     except Exception as e:
         print(f"Error loading webinar settings: {e}")
         # Return default settings if there's an error
+        default_video_id = "GXRL7PcPbOA"
         return {
-            "embed_url": "https://www.youtube.com/embed/GXRL7PcPbOA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
+            "embed_url": f"https://www.youtube.com/embed/{default_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
+            "youtube_video_id": default_video_id,
             "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay",
             "webinar_description": "Welcome to the live relay of Ashara Mubaraka 1447. This stream is authorized for ITS members only. Please do not share this link with others.",
             "webinar_date": "June 18-27, 2025",
@@ -320,14 +330,45 @@ def load_webinar_settings():
             "no_webinar": False
         }
 
+def extract_youtube_id(url):
+    """Extract YouTube video ID from various URL formats"""
+    if not url:
+        return ""
+        
+    # Check if it's already just a video ID (no slashes, simple string)
+    if '/' not in url and '?' not in url and len(url) > 8 and len(url) < 20:
+        return url
+        
+    # Extract from standard or embed URLs
+    import re
+    patterns = [
+        r'(?:youtube\.com\/embed\/|youtube\.com\/watch\?v=|youtu\.be\/)([^?&\/]+)',  # Standard formats
+        r'([^?&\/]{11})'  # Fallback for ID-only or other formats
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    
+    # If no match found, return empty string
+    return ""
+
 def save_webinar_settings(settings):
     """Save webinar settings to database"""
     try:
         webinar_settings = WebinarSetting.query.first()
         
+        # If settings contains embed_url, extract the video ID from it
+        video_id = ""
+        if "embed_url" in settings:
+            video_id = extract_youtube_id(settings["embed_url"])
+        elif "youtube_video_id" in settings:
+            video_id = settings["youtube_video_id"]
+            
         # If settings exists, update it, otherwise create new
         if webinar_settings:
-            webinar_settings.embed_url = settings["embed_url"]
+            webinar_settings.youtube_video_id = video_id
             webinar_settings.webinar_title = settings["webinar_title"]
             webinar_settings.webinar_description = settings["webinar_description"]
             webinar_settings.webinar_date = settings["webinar_date"]
@@ -336,7 +377,7 @@ def save_webinar_settings(settings):
             webinar_settings.no_webinar = settings["no_webinar"]
         else:
             webinar_settings = WebinarSetting(
-                embed_url=settings["embed_url"],
+                youtube_video_id=video_id,
                 webinar_title=settings["webinar_title"],
                 webinar_description=settings["webinar_description"],
                 webinar_date=settings["webinar_date"],
@@ -3280,7 +3321,10 @@ ADMIN_DASHBOARD_TEMPLATE = '''
                     Webinar Settings
                 </h2>
                 <form method="POST" action="{{ url_for('admin_update_webinar_settings') }}">
-                    <input type="text" name="embed_url" class="form-input" placeholder="YouTube Embed URL" value="{{ settings.embed_url if settings else '' }}" required>
+                    <input type="text" name="youtube_video_id" class="form-input" placeholder="YouTube Video ID (e.g., 2iq6zW8nv2E)" value="{{ settings.youtube_video_id if settings else '' }}" required>
+                    <div class="form-helper" style="font-size: 0.8rem; color: #666; margin: -0.5rem 0 1rem 0;">
+                        Enter only the video ID (e.g., 2iq6zW8nv2E), not the entire URL.
+                    </div>
                     <input type="text" name="webinar_title" class="form-input" placeholder="Webinar Title" value="{{ settings.webinar_title if settings else '' }}" required>
                     <textarea name="webinar_description" class="form-textarea" placeholder="Description" required>{{ settings.webinar_description if settings else '' }}</textarea>
                     <input type="text" name="webinar_date" class="form-input" placeholder="Date" value="{{ settings.webinar_date if settings else '' }}" required>
@@ -3505,7 +3549,8 @@ def admin_update_webinar_settings():
             db.session.add(settings)
             
         # Update settings with form data
-        settings.embed_url = request.form.get('embed_url', '')
+        video_id_or_url = request.form.get('youtube_video_id', '') or request.form.get('embed_url', '')
+        settings.youtube_video_id = extract_youtube_id(video_id_or_url)
         settings.webinar_title = request.form.get('webinar_title', '')
         settings.webinar_description = request.form.get('webinar_description', '')
         settings.webinar_date = request.form.get('webinar_date', '')
