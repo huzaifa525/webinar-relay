@@ -560,7 +560,7 @@ LOGIN_TEMPLATE = '''
         <div class="login-header">
             <div class="logo-container">
                 <div class="logo-icon">
-                    <img src="https://i.ibb.co/nqfBrmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
+                    <img src="https://i.ibb.co/nqfBrMmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
                 </div>
                 <div class="logo-text">
                     <div class="logo-title">Anjuman e Hakimi</div>
