@@ -86,15 +86,23 @@ def save_sessions(sessions):
         json.dump(sessions, f, indent=2)
 
 def cleanup_expired_sessions():
-    """Remove expired sessions"""
+    """Remove expired or inactive sessions"""
     sessions = load_sessions()
     current_time = datetime.now()
     
     expired_sessions = []
     for session_id, session_data in sessions.items():
+        # Check if session has exceeded maximum lifetime (24 hours)
         session_time = datetime.fromisoformat(session_data['login_time'])
         if current_time - session_time > timedelta(hours=24):  # 24 hour session timeout
             expired_sessions.append(session_id)
+            continue
+            
+        # Check if session is inactive (30 minutes of inactivity)
+        if 'last_activity' in session_data:
+            last_activity = datetime.fromisoformat(session_data['last_activity'])
+            if current_time - last_activity > timedelta(minutes=30):  # 30 minute inactivity timeout
+                expired_sessions.append(session_id)
     
     for session_id in expired_sessions:
         del sessions[session_id]
@@ -118,17 +126,24 @@ def create_session(its_id):
     
     sessions[session_token] = {
         'its_id': str(its_id),
-        'login_time': datetime.now().isoformat()
+        'login_time': datetime.now().isoformat(),
+        'last_activity': datetime.now().isoformat()
     }
     
     save_sessions(sessions)
     return session_token
 
 def verify_session(session_token):
-    """Verify if session token is valid"""
+    """Verify if session token is valid and update last activity"""
     cleanup_expired_sessions()
     sessions = load_sessions()
-    return session_token in sessions
+    
+    if session_token in sessions:
+        # Update last activity time
+        sessions[session_token]['last_activity'] = datetime.now().isoformat()
+        save_sessions(sessions)
+        return True
+    return False
 
 def logout_session(session_token):
     """Remove session"""
@@ -845,6 +860,52 @@ WEBINAR_TEMPLATE_IMPROVED = '''
             background: var(--surface-3);
             transform: translateY(-1px);
         }
+        
+        .logout-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 5px);
+            min-width: 220px;
+            background: var(--bg-surface-light);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            z-index: 100;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            overflow: hidden;
+        }
+        
+        .dropdown-content a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: var(--transition-fast);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .dropdown-content a:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-content a:hover {
+            background: var(--surface-2);
+        }
+        
+        .dropdown-content a i {
+            color: var(--accent-gold);
+            font-size: 0.9rem;
+            width: 18px;
+            text-align: center;
+        }
 
         /* Container */
         .container {
@@ -1547,7 +1608,13 @@ WEBINAR_TEMPLATE_IMPROVED = '''
         </div>
         <div class="user-info">
             <div class="user-id">ITS ID: {{ its_id }}</div>
-            <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+            <div class="logout-dropdown">
+                <a href="javascript:void(0)" class="logout-btn" onclick="toggleDropdown()">Session <i class="fas fa-angle-down"></i></a>
+                <div class="dropdown-content" id="sessionDropdown">
+                    <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout this device</a>
+                    <a href="{{ url_for('force_logout') }}" onclick="return confirm('This will log you out from ALL devices. Continue?');"><i class="fas fa-power-off"></i> Logout from all devices</a>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -1957,6 +2024,48 @@ WEBINAR_TEMPLATE_IMPROVED = '''
             50% { transform: scale(1.2); }
         }
     </style>
+    
+    <script>
+        // Session management dropdown toggle
+        function toggleDropdown() {
+            const dropdown = document.getElementById('sessionDropdown');
+            if (dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            } else {
+                dropdown.style.display = 'block';
+            }
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('sessionDropdown');
+            const logoutBtn = document.querySelector('.logout-btn');
+            
+            if (!event.target.closest('.logout-dropdown') && dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        // Auto logout after inactivity (30 minutes)
+        let inactivityTimer;
+        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+        
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(function() {
+                alert("You've been inactive for 30 minutes. You will be logged out for security reasons.");
+                window.location.href = "{{ url_for('logout') }}";
+            }, INACTIVITY_TIMEOUT);
+        }
+        
+        // Reset timer on user activity
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(function(event) {
+            document.addEventListener(event, resetInactivityTimer, true);
+        });
+        
+        // Start the timer
+        resetInactivityTimer();
+    </script>
 </body>
 </html>
 '''
@@ -2181,7 +2290,13 @@ NO_WEBINAR_TEMPLATE = '''
         </div>
         <div class="user-info">
             <div class="its-id-badge">ITS ID: {{ its_id }}</div>
-            <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+            <div class="logout-dropdown">
+                <a href="javascript:void(0)" class="logout-btn" onclick="toggleDropdown()">Session <i class="fas fa-angle-down"></i></a>
+                <div class="dropdown-content" id="sessionDropdown">
+                    <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout this device</a>
+                    <a href="{{ url_for('force_logout') }}" onclick="return confirm('This will log you out from ALL devices. Continue?');"><i class="fas fa-power-off"></i> Logout from all devices</a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2205,9 +2320,95 @@ NO_WEBINAR_TEMPLATE = '''
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.2); }
         }
+        
+        /* Session dropdown styles */
+        .logout-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 5px);
+            min-width: 220px;
+            background: var(--bg-surface-light, #1a233f);
+            border-radius: var(--radius-md, 10px);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            overflow: hidden;
+        }
+        
+        .dropdown-content a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            color: white;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .dropdown-content a:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-content a:hover {
+            background: rgba(255, 255, 255, 0.07);
+        }
+        
+        .dropdown-content a i {
+            color: #d4af37;
+            font-size: 0.9rem;
+            width: 18px;
+            text-align: center;
+        }
     </style>
 
     <script>
+        // Session management dropdown toggle
+        function toggleDropdown() {
+            const dropdown = document.getElementById('sessionDropdown');
+            if (dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            } else {
+                dropdown.style.display = 'block';
+            }
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('sessionDropdown');
+            
+            if (!event.target.closest('.logout-dropdown') && dropdown && dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        // Auto logout after inactivity (30 minutes)
+        let inactivityTimer;
+        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+        
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(function() {
+                alert("You've been inactive for 30 minutes. You will be logged out for security reasons.");
+                window.location.href = "{{ url_for('logout') }}";
+            }, INACTIVITY_TIMEOUT);
+        }
+        
+        // Reset timer on user activity
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(function(event) {
+            document.addEventListener(event, resetInactivityTimer, true);
+        });
+        
+        // Start the timer
+        resetInactivityTimer();
+        
         // Disable right-click and dev tools
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('keydown', function(e) {
@@ -2310,9 +2511,9 @@ def webinar():
             webinar_data = json.load(f)
             
             if 'no_webinar' in webinar_data and webinar_data['no_webinar'] == True:
-                return render_template_string(NO_WEBINAR_TEMPLATE, its_id=its_id)
+                return render_template_string(NO_WEBINAR_TEMPLATE, its_id=its_id, session_token=session_token)
             else:
-                return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=its_id, **webinar_data)
+                return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=its_id, session_token=session_token, **webinar_data)
     except Exception as e:
         print(f"Error loading webinar settings: {e}")
         default_settings = {
@@ -2323,7 +2524,7 @@ def webinar():
             "webinar_time": "7:30 AM - 12:30 PM IST",
             "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)"
         }
-        return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=its_id, **default_settings)
+        return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=its_id, session_token=session_token, **default_settings)
 
 @app.route('/logout')
 def logout():
@@ -2331,6 +2532,25 @@ def logout():
     if 'session_token' in request.cookies:
         session_token = request.cookies.get('session_token')
         logout_session(session_token)
+    
+    response = redirect(url_for('index'))
+    response.delete_cookie('session_token')
+    return response
+    
+@app.route('/force-logout')
+def force_logout():
+    """Force logout from all devices"""
+    if 'session_token' in request.cookies:
+        session_token = request.cookies.get('session_token')
+        sessions = load_sessions()
+        if session_token in sessions:
+            its_id = sessions[session_token]['its_id']
+            # Remove all sessions for this ITS ID
+            expired_sessions = [s_id for s_id, s_data in sessions.items() 
+                               if s_data['its_id'] == its_id]
+            for s_id in expired_sessions:
+                del sessions[s_id]
+            save_sessions(sessions)
     
     response = redirect(url_for('index'))
     response.delete_cookie('session_token')
