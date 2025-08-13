@@ -3152,14 +3152,13 @@ ADMIN_LOGIN_TEMPLATE = '''
 </html>
 '''
 
-# Admin dashboard template (complete version)
-ADMIN_DASHBOARD_TEMPLATE = '''
-<!DOCTYPE html>
+# Admin dashboard template with dual user management
+ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal</title>
+    <title>Admin Dashboard - Dual User Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
@@ -3168,22 +3167,15 @@ ADMIN_DASHBOARD_TEMPLATE = '''
             --brand-primary: #0a3da0;
             --accent-gold: #d4af37;
             --bg-dark: #090d1b;
-            --bg-surface: #0f1428;
             --text-primary: #ffffff;
             --text-secondary: rgba(255, 255, 255, 0.85);
             --gradient-brand: linear-gradient(135deg, var(--brand-primary), #1c54c5);
             --gradient-glass: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-            --shadow-lg: 0 16px 50px rgba(0, 0, 0, 0.3);
             --radius-md: 10px;
             --radius-lg: 16px;
-            --radius-full: 999px;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -3194,7 +3186,6 @@ ADMIN_DASHBOARD_TEMPLATE = '''
 
         .header {
             background: var(--gradient-glass);
-            backdrop-filter: blur(20px);
             padding: 1.5rem 2rem;
             border-bottom: 1px solid rgba(212, 175, 55, 0.2);
             display: flex;
@@ -3202,15 +3193,11 @@ ADMIN_DASHBOARD_TEMPLATE = '''
             align-items: center;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1rem;
             margin-bottom: 2rem;
         }
@@ -3221,23 +3208,51 @@ ADMIN_DASHBOARD_TEMPLATE = '''
             border-radius: var(--radius-lg);
             text-align: center;
             border: 1px solid rgba(212, 175, 55, 0.1);
-            backdrop-filter: blur(15px);
         }
 
         .stat-number {
-            font-size: 2.5rem;
+            font-size: 1.8rem;
             font-weight: 800;
             color: var(--accent-gold);
             font-family: 'Montserrat', sans-serif;
         }
 
         .stat-label {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 0.05em;
             font-weight: 600;
         }
+
+        .tab-nav {
+            display: flex;
+            margin-bottom: 2rem;
+            background: var(--gradient-glass);
+            border-radius: var(--radius-lg);
+            padding: 0.5rem;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 1rem 2rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--gradient-brand);
+            color: var(--text-primary);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
         .dashboard-grid {
             display: grid;
@@ -3248,417 +3263,462 @@ ADMIN_DASHBOARD_TEMPLATE = '''
 
         .card {
             background: var(--gradient-glass);
-            backdrop-filter: blur(15px);
             border-radius: var(--radius-lg);
             padding: 2rem;
             border: 1px solid rgba(212, 175, 55, 0.2);
-            box-shadow: var(--shadow-lg);
         }
 
         .card-title {
             font-size: 1.4rem;
             font-weight: 700;
-            color: var(--text-primary);
+            color: var(--accent-gold);
             margin-bottom: 1.5rem;
-            font-family: 'Montserrat', sans-serif;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+
+        .form-group { margin-bottom: 1rem; }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            font-size: 0.9rem;
         }
 
         .btn {
-            padding: 1rem 2rem;
+            background: var(--gradient-brand);
+            color: var(--text-primary);
             border: none;
+            padding: 0.75rem 1.5rem;
             border-radius: var(--radius-md);
-            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            font-family: 'Montserrat', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
             transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
+            margin: 0.25rem;
         }
 
-        .btn-primary {
-            background: var(--gradient-brand);
-            color: white;
-        }
+        .btn-danger { background: linear-gradient(135deg, #dc3545, #c82333); }
+        .btn-success { background: linear-gradient(135deg, #28a745, #20c997); }
+        .btn-warning { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+        .btn-sm { padding: 0.5rem 1rem; font-size: 0.8rem; }
 
-        .btn-success {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-        }
+        .alert { padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; }
+        .alert-success { background: rgba(40, 167, 69, 0.2); color: #28a745; }
+        .alert-error { background: rgba(220, 53, 69, 0.2); color: #dc3545; }
 
-        .btn-danger {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-        }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(212, 175, 55, 0.2); }
+        th { color: var(--accent-gold); font-weight: 600; background: rgba(212, 175, 55, 0.1); }
 
-        .btn-sm {
-            padding: 0.6rem 1.2rem;
-            font-size: 0.9rem;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-        }
-
-        .form-input, .form-textarea {
-            width: 100%;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(212, 175, 55, 0.2);
-            border-radius: var(--radius-md);
-            color: var(--text-primary);
-            font-size: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .form-input:focus, .form-textarea:focus {
-            outline: none;
-            border-color: var(--accent-gold);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .form-textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-
-        .success-message {
-            background: rgba(16, 185, 129, 0.1);
-            color: #34d399;
-            padding: 1rem;
-            border-radius: var(--radius-md);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .error-message {
-            background: rgba(220, 53, 69, 0.1);
-            color: #ff6b7a;
-            padding: 1rem;
-            border-radius: var(--radius-md);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .its-list {
-            max-height: 400px;
+        .id-list {
+            max-height: 300px;
             overflow-y: auto;
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(0, 0, 0, 0.3);
             border-radius: var(--radius-md);
-            border: 1px solid rgba(212, 175, 55, 0.1);
             padding: 1rem;
-            margin-bottom: 1.5rem;
+            margin: 1rem 0;
         }
 
-        .its-item {
+        .id-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.75rem 1rem;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
         }
 
-        .its-item:hover {
-            background: rgba(255, 255, 255, 0.05);
+        .cache-controls { text-align: center; margin: 2rem 0; }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+            margin-top: 2rem;
         }
 
-        .its-badge {
-            background: rgba(212, 175, 55, 0.1);
-            color: var(--accent-gold);
-            padding: 0.3rem 0.7rem;
-            border-radius: var(--radius-full);
-            font-weight: 600;
-            font-size: 0.9rem;
-            position: relative;
-        }
-
-        .active-session {
-            position: relative;
-        }
-
-        .active-session::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            right: -15px;
-            transform: translateY(-50%);
-            width: 8px;
-            height: 8px;
-            background: #10b981;
-            border-radius: 50%;
-            box-shadow: 0 0 10px #10b981;
-        }
-
-        .sessions-table {
-            overflow-x: auto;
-        }
-
-        .sessions-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .sessions-table th,
-        .sessions-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .sessions-table th {
-            background: rgba(255, 255, 255, 0.05);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 0.05em;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-            
-            .container {
-                padding: 1rem;
-            }
-            
-            .header {
-                padding: 1rem;
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-        }
+        @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        .heart { color: #ff4d4d; display: inline-block; animation: heartbeat 1.5s ease infinite; }
     </style>
 </head>
 <body>
     <div class="header">
+        <h1><i class="fas fa-shield-alt"></i> Admin Dashboard</h1>
         <div>
-            <h1><i class="fas fa-cogs"></i> Admin Dashboard</h1>
-            <p style="color: var(--text-secondary);">Ratlam Relay Centre Management</p>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn-danger">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
         </div>
-        <a href="{{ url_for('admin_logout') }}" style="color: #ff6b7a; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
     </div>
 
     <div class="container">
+        {% if message %}
+            <div class="alert alert-{{ 'success' if message_type == 'success' else 'error' }}">
+                {{ message }}
+            </div>
+        {% endif %}
+
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-number">{{ stats.total_its }}</div>
                 <div class="stat-label">Total ITS IDs</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">{{ stats.active_sessions }}</div>
-                <div class="stat-label">Active Sessions</div>
+                <div class="stat-number">{{ stats.total_majlis }}</div>
+                <div class="stat-label">Total Majlis IDs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.active_its_sessions }}</div>
+                <div class="stat-label">ITS Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.active_majlis_sessions }}</div>
+                <div class="stat-label">Majlis Sessions</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number">{{ stats.total_sessions }}</div>
-                <div class="stat-label">Total Sessions</div>
+                <div class="stat-label">Total Active Sessions</div>
             </div>
         </div>
 
-        {% if message and message_type == 'success' %}
-        <div class="success-message">
-            <i class="fas fa-check-circle"></i>
-            {{ message }}
+        <div class="cache-controls">
+            <form method="POST" action="{{ url_for('admin_refresh_cache') }}" style="display: inline;">
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-sync-alt"></i> Refresh Cache
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('admin_clear_sessions') }}" style="display: inline;">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Clear all active sessions?')">
+                    <i class="fas fa-trash-alt"></i> Clear All Sessions
+                </button>
+            </form>
         </div>
-        {% endif %}
-        
-        {% if message and message_type == 'error' %}
-        <div class="error-message">
-            <i class="fas fa-exclamation-circle"></i>
-            {{ message }}
+
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="showTab('its-tab')">
+                <i class="fas fa-users"></i> ITS Management
+            </button>
+            <button class="tab-btn" onclick="showTab('majlis-tab')">
+                <i class="fas fa-crown"></i> Majlis Management
+            </button>
+            <button class="tab-btn" onclick="showTab('sessions-tab')">
+                <i class="fas fa-desktop"></i> Active Sessions
+            </button>
         </div>
-        {% endif %}
 
-        <div class="dashboard-grid">
-            <div class="card">
-                <h2 class="card-title">
-                    <i class="fas fa-video"></i>
-                    Webinar Settings
-                </h2>
-                <form method="POST" action="{{ url_for('admin_update_webinar_settings') }}">
-                    <input type="text" name="youtube_video_id" class="form-input" placeholder="YouTube Video ID (e.g., 2iq6zW8nv2E)" value="{{ settings.youtube_video_id if settings else '' }}" required>
-                    <div class="form-helper" style="font-size: 0.8rem; color: #666; margin: -0.5rem 0 1rem 0;">
-                        Enter only the video ID (e.g., 2iq6zW8nv2E), not the entire URL.
-                    </div>
-                    <input type="text" name="webinar_title" class="form-input" placeholder="Webinar Title" value="{{ settings.webinar_title if settings else '' }}" required>
-                    <textarea name="webinar_description" class="form-textarea" placeholder="Description" required>{{ settings.webinar_description if settings else '' }}</textarea>
-                    <input type="text" name="webinar_date" class="form-input" placeholder="Date" value="{{ settings.webinar_date if settings else '' }}" required>
-                    <input type="text" name="webinar_time" class="form-input" placeholder="Time" value="{{ settings.webinar_time if settings else '' }}" required>
-                    <input type="text" name="webinar_speaker" class="form-input" placeholder="Speaker" value="{{ settings.webinar_speaker if settings else '' }}" required>
-                    
-                    <label style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; cursor: pointer;">
-                        <input type="checkbox" name="no_webinar" {% if settings and settings.no_webinar %}checked{% endif %} style="width: 1.2rem; height: 1.2rem;">
-                        <span>No Webinar Available</span>
-                    </label>
-                    
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i>
-                        Update Settings
-                    </button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2 class="card-title">
-                    <i class="fas fa-user-plus"></i>
-                    Add ITS IDs
-                </h2>
-                
-                <form method="POST" action="{{ url_for('admin_add_its') }}">
-                    <input type="text" name="single_its" class="form-input" placeholder="Enter 8-digit ITS ID" maxlength="8" pattern="[0-9]{8}">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus"></i>
-                        Add Single ITS
-                    </button>
-                </form>
-
-                <hr style="margin: 2rem 0; border: none; border-top: 1px solid rgba(212, 175, 55, 0.2);">
-
-                <form method="POST" action="{{ url_for('admin_add_bulk_its') }}">
-                    <textarea name="bulk_its" class="form-textarea" placeholder="Enter multiple ITS IDs (one per line or comma-separated)" rows="5"></textarea>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-upload"></i>
-                        Add Bulk ITS
-                    </button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2 class="card-title">
-                    <i class="fas fa-users"></i>
-                    Manage ITS IDs ({{ stats.total_its }} total)
-                </h2>
-                
-                <div class="action-buttons">
-                    <form method="POST" action="{{ url_for('admin_clear_sessions') }}" style="display: inline;">
-                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Clear all active sessions?')">
-                            <i class="fas fa-trash"></i>
-                            Clear All Sessions
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ url_for('admin_delete_all_its') }}" style="display: inline;">
-                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete all ITS IDs? This cannot be undone.')">
-                            <i class="fas fa-trash-alt"></i>
-                            Delete All ITS IDs
-                        </button>
-                    </form>
-                </div>
-                
-                {% if its_ids %}
-                <div class="its-list">
-                    {% for its_id in its_ids %}
-                    <div class="its-item">
-                        <div class="its-badge {% if its_id in sessions_status %}active-session{% endif %}">
-                            {{ its_id }}
-                            {% if its_id in sessions_status %}
-                                <i class="fas fa-circle" style="color: #10b981; font-size: 0.6rem; margin-left: 0.5rem;"></i>
-                            {% endif %}
+        <div id="its-tab" class="tab-content active">
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-user-plus"></i> Add ITS ID</h3>
+                    <form method="POST" action="{{ url_for('admin_add_its') }}">
+                        <div class="form-group">
+                            <label for="its_id">ITS ID (8 digits):</label>
+                            <input type="text" id="its_id" name="its_id" pattern="[0-9]{8}" required 
+                                   placeholder="12345678" maxlength="8">
                         </div>
-                        <form method="POST" action="{{ url_for('admin_delete_its') }}">
-                            <input type="hidden" name="its_id" value="{{ its_id }}">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this ITS ID?')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
-                    </div>
-                    {% endfor %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Add ITS ID
+                        </button>
+                    </form>
                 </div>
-                {% else %}
-                <div class="error-message">
-                    <i class="fas fa-info-circle"></i>
-                    No ITS IDs added yet.
-                </div>
-                {% endif %}
-            </div>
 
-            <div class="card">
-                <h2 class="card-title">
-                    <i class="fas fa-chart-line"></i>
-                    Active Sessions
-                </h2>
-                
-                {% if sessions_data %}
-                <div class="sessions-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ITS ID</th>
-                                <th>Login Time</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for session in sessions_data %}
-                            <tr>
-                                <td>{{ session.its_id }}</td>
-                                <td>{{ session.login_time_formatted }}</td>
-                                <td>
-                                    <form method="POST" action="{{ url_for('admin_kick_session') }}" style="display: inline;">
-                                        <input type="hidden" name="session_token" value="{{ session.session_token }}">
-                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Kick this user?')">
-                                            <i class="fas fa-user-times"></i>
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-upload"></i> Bulk Add ITS IDs</h3>
+                    <form method="POST" action="{{ url_for('admin_add_bulk_its') }}">
+                        <div class="form-group">
+                            <label for="bulk_its_ids">ITS IDs (one per line or comma separated):</label>
+                            <textarea id="bulk_its_ids" name="bulk_its_ids" rows="5" 
+                                      placeholder="12345678,87654321,11223344..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-upload"></i> Bulk Add
+                        </button>
+                    </form>
                 </div>
-                {% else %}
-                <div class="error-message">
-                    <i class="fas fa-info-circle"></i>
-                    No active sessions.
+
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-video"></i> ITS Webinar Settings</h3>
+                    <form method="POST" action="{{ url_for('admin_update_webinar_settings') }}">
+                        <div class="form-group">
+                            <label for="youtube_video_id">YouTube Video ID:</label>
+                            <input type="text" id="youtube_video_id" name="youtube_video_id" 
+                                   value="{{ its_settings.youtube_video_id }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="webinar_title">Title:</label>
+                            <input type="text" id="webinar_title" name="webinar_title" 
+                                   value="{{ its_settings.webinar_title }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="webinar_description">Description:</label>
+                            <textarea id="webinar_description" name="webinar_description" rows="3">{{ its_settings.webinar_description }}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="webinar_date">Date:</label>
+                            <input type="text" id="webinar_date" name="webinar_date" 
+                                   value="{{ its_settings.webinar_date }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="webinar_time">Time:</label>
+                            <input type="text" id="webinar_time" name="webinar_time" 
+                                   value="{{ its_settings.webinar_time }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="webinar_speaker">Speaker:</label>
+                            <input type="text" id="webinar_speaker" name="webinar_speaker" 
+                                   value="{{ its_settings.webinar_speaker }}">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" name="no_webinar" 
+                                       {% if its_settings.no_webinar %}checked{% endif %}>
+                                No Webinar Active
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Update ITS Settings
+                        </button>
+                    </form>
                 </div>
-                {% endif %}
+
+                <div class="card">
+                    <h3 class="card-title">
+                        <i class="fas fa-list"></i> Current ITS IDs ({{ its_ids|length }})
+                    </h3>
+                    <div class="id-list">
+                        {% for id in its_ids %}
+                        <div class="id-item">
+                            <span>{{ id }}</span>
+                            <form method="POST" action="{{ url_for('admin_delete_its') }}" style="display: inline;">
+                                <input type="hidden" name="its_id" value="{{ id }}">
+                                <button type="submit" class="btn btn-danger btn-sm" 
+                                        onclick="return confirm('Delete ITS ID {{ id }}?')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <form method="POST" action="{{ url_for('admin_delete_all_its') }}">
+                        <button type="submit" class="btn btn-danger" 
+                                onclick="return confirm('Delete ALL ITS IDs?')">
+                            <i class="fas fa-trash-alt"></i> Delete All ITS IDs
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="majlis-tab" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-crown"></i> Add Majlis ID</h3>
+                    <form method="POST" action="{{ url_for('admin_add_majlis') }}">
+                        <div class="form-group">
+                            <label for="majlis_id">Majlis ID (8 digits):</label>
+                            <input type="text" id="majlis_id" name="majlis_id" pattern="[0-9]{8}" required 
+                                   placeholder="12345678" maxlength="8">
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Add Majlis ID
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-upload"></i> Bulk Add Majlis IDs</h3>
+                    <form method="POST" action="{{ url_for('admin_add_bulk_majlis') }}">
+                        <div class="form-group">
+                            <label for="bulk_majlis_ids">Majlis IDs (one per line or comma separated):</label>
+                            <textarea id="bulk_majlis_ids" name="bulk_majlis_ids" rows="5" 
+                                      placeholder="12345678,87654321,11223344..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-upload"></i> Bulk Add
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-video"></i> Majlis Webinar Settings</h3>
+                    <form method="POST" action="{{ url_for('admin_update_majlis_settings') }}">
+                        <div class="form-group">
+                            <label for="majlis_youtube_video_id">YouTube Video ID:</label>
+                            <input type="text" id="majlis_youtube_video_id" name="majlis_youtube_video_id" 
+                                   value="{{ majlis_settings.youtube_video_id }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="majlis_webinar_title">Title:</label>
+                            <input type="text" id="majlis_webinar_title" name="majlis_webinar_title" 
+                                   value="{{ majlis_settings.webinar_title }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="majlis_webinar_description">Description:</label>
+                            <textarea id="majlis_webinar_description" name="majlis_webinar_description" rows="3">{{ majlis_settings.webinar_description }}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="majlis_webinar_date">Date:</label>
+                            <input type="text" id="majlis_webinar_date" name="majlis_webinar_date" 
+                                   value="{{ majlis_settings.webinar_date }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="majlis_webinar_time">Time:</label>
+                            <input type="text" id="majlis_webinar_time" name="majlis_webinar_time" 
+                                   value="{{ majlis_settings.webinar_time }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="majlis_webinar_speaker">Speaker:</label>
+                            <input type="text" id="majlis_webinar_speaker" name="majlis_webinar_speaker" 
+                                   value="{{ majlis_settings.webinar_speaker }}">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" name="majlis_no_webinar" 
+                                       {% if majlis_settings.no_webinar %}checked{% endif %}>
+                                No Webinar Active
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Update Majlis Settings
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">
+                        <i class="fas fa-list"></i> Current Majlis IDs ({{ majlis_ids|length }})
+                    </h3>
+                    <div class="id-list">
+                        {% for id in majlis_ids %}
+                        <div class="id-item">
+                            <span>{{ id }}</span>
+                            <form method="POST" action="{{ url_for('admin_delete_majlis') }}" style="display: inline;">
+                                <input type="hidden" name="majlis_id" value="{{ id }}">
+                                <button type="submit" class="btn btn-danger btn-sm" 
+                                        onclick="return confirm('Delete Majlis ID {{ id }}?')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <form method="POST" action="{{ url_for('admin_delete_all_majlis') }}">
+                        <button type="submit" class="btn btn-danger" 
+                                onclick="return confirm('Delete ALL Majlis IDs?')">
+                            <i class="fas fa-trash-alt"></i> Delete All Majlis IDs
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="sessions-tab" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3 class="card-title">
+                        <i class="fas fa-users"></i> Active ITS Sessions ({{ its_sessions|length }})
+                    </h3>
+                    {% if its_sessions %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Login Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in its_sessions %}
+                                <tr>
+                                    <td>{{ session.user_id }}</td>
+                                    <td>{{ session.login_time_formatted }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('admin_kick_session') }}" style="display: inline;">
+                                            <input type="hidden" name="session_token" value="{{ session.session_token }}">
+                                            <button type="submit" class="btn btn-danger btn-sm" 
+                                                    onclick="return confirm('Kick this user?')">
+                                                <i class="fas fa-user-times"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p>No active ITS sessions</p>
+                    {% endif %}
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">
+                        <i class="fas fa-crown"></i> Active Majlis Sessions ({{ majlis_sessions|length }})
+                    </h3>
+                    {% if majlis_sessions %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Login Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in majlis_sessions %}
+                                <tr>
+                                    <td>{{ session.user_id }}</td>
+                                    <td>{{ session.login_time_formatted }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('admin_kick_session') }}" style="display: inline;">
+                                            <input type="hidden" name="session_token" value="{{ session.session_token }}">
+                                            <button type="submit" class="btn btn-danger btn-sm" 
+                                                    onclick="return confirm('Kick this user?')">
+                                                <i class="fas fa-user-times"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p>No active Majlis sessions</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
-    
-    <div style="text-align: center; margin-top: 20px; padding: 10px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.65);">
-        Developed with <span style="color: #ff4d4d; display: inline-block; animation: heartbeat 1.5s ease infinite;">♥</span> by Huzefa Nalkheda wala
+
+    <div class="footer">
+        Developed with <span class="heart">♥</span> by Huzefa Nalkheda wala
     </div>
-    
-    <style>
-        @keyframes heartbeat {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
+
+    <script>
+        function showTab(tabId) {
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(tab => tab.classList.remove('active'));
+            
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            tabBtns.forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
         }
-    </style>
+    </script>
 </body>
-</html>
-'''
+</html>'''
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
