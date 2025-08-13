@@ -55,15 +55,6 @@ class ItsID(db.Model):
     def __repr__(self):
         return f'<ItsID {self.id}>'
 
-class ActiveSession(db.Model):
-    __tablename__ = 'active_sessions'
-    token = db.Column(db.String(64), primary_key=True)
-    its_id = db.Column(db.String(8), db.ForeignKey('its_ids.id'), nullable=False)
-    login_time = db.Column(db.DateTime, default=datetime.now)
-    last_activity = db.Column(db.DateTime, default=datetime.now)
-    
-    def __repr__(self):
-        return f'<Session {self.token} for {self.its_id}>'
 
 class AdminCredential(db.Model):
     __tablename__ = 'admin_credentials'
@@ -2984,20 +2975,15 @@ def force_logout():
     if 'session_token' in request.cookies:
         try:
             session_token = request.cookies.get('session_token')
-            session = ActiveSession.query.get(session_token)
+            session_info = verify_session(session_token)
             
-            if session:
-                its_id = session.its_id
-                # Find and delete all sessions for this ITS ID
-                sessions_to_delete = ActiveSession.query.filter_by(its_id=its_id).all()
-                
-                for s in sessions_to_delete:
-                    db.session.delete(s)
-                
-                db.session.commit()
+            if session_info:
+                user_id = session_info['user_id']
+                user_type = session_info['user_type']
+                # Remove all sessions for this user
+                remove_existing_user_sessions(user_id, user_type)
         except Exception as e:
             print(f"Error in force logout: {e}")
-            db.session.rollback()
     
     response = redirect(url_for('index'))
     response.delete_cookie('session_token')
@@ -4004,7 +3990,7 @@ def admin_delete_its():
             return redirect(url_for('admin_dashboard') + '?message=ITS ID not found&type=error')
         
         # Delete any associated sessions first
-        ActiveSession.query.filter_by(its_id=its_id).delete()
+        remove_existing_user_sessions(its_id, 'its')
         
         # Delete the ITS ID
         db.session.delete(id_to_delete)
