@@ -389,6 +389,48 @@ def kick_session(session_token):
     """Remove a specific session"""
     return logout_session(session_token)
 
+def is_user_already_logged_in(user_id, user_type):
+    """Check if a user is already logged in on another device"""
+    try:
+        session_keys = redis_client.keys('sessions:*')
+        print(f"Checking for existing sessions for {user_type} user {user_id}. Found {len(session_keys)} total sessions.")
+        
+        for key in session_keys:
+            session_data = redis_client.get(key)
+            if session_data:
+                session_info = json.loads(session_data)
+                if (session_info.get('user_id') == str(user_id) and 
+                    session_info.get('user_type') == user_type):
+                    print(f"Found existing session for {user_type} user {user_id}")
+                    return True
+        
+        print(f"No existing sessions found for {user_type} user {user_id}")
+        return False
+    except Exception as e:
+        print(f"Error checking existing login: {e}")
+        return False
+
+def remove_existing_user_sessions(user_id, user_type):
+    """Remove all existing sessions for a specific user"""
+    try:
+        session_keys = redis_client.keys('sessions:*')
+        removed_count = 0
+        
+        for key in session_keys:
+            session_data = redis_client.get(key)
+            if session_data:
+                session_info = json.loads(session_data)
+                if (session_info.get('user_id') == str(user_id) and 
+                    session_info.get('user_type') == user_type):
+                    redis_client.delete(key)
+                    removed_count += 1
+        
+        print(f"Removed {removed_count} existing sessions for {user_type} user {user_id}")
+        return removed_count
+    except Exception as e:
+        print(f"Error removing existing sessions: {e}")
+        return 0
+
 def admin_required(f):
     """Decorator for admin-only routes"""
     @wraps(f)
@@ -2835,20 +2877,32 @@ def index():
         
         # Check ITS ID first
         if is_its_id_valid(user_id):
+            # Check if user is already logged in on another device
+            if is_user_already_logged_in(user_id, 'its'):
+                print(f"Blocked login attempt for ITS user {user_id} - already logged in")
+                return render_template_string(LOGIN_TEMPLATE, error="This ITS ID is already logged in on another device. Only one device is allowed at a time. Contact admin if you need to force logout.")
+            
             session_token = create_session(user_id, 'its')
             if not session_token:
                 return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
             
+            print(f"Successfully created new session for ITS user {user_id}")
             response = redirect(url_for('webinar'))
             response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
             return response
         
         # Check Majlis ID if ITS ID not found
         elif is_majlis_id_valid(user_id):
+            # Check if user is already logged in on another device
+            if is_user_already_logged_in(user_id, 'majlis'):
+                print(f"Blocked login attempt for Majlis user {user_id} - already logged in")
+                return render_template_string(LOGIN_TEMPLATE, error="This Majlis ID is already logged in on another device. Only one device is allowed at a time. Contact admin if you need to force logout.")
+            
             session_token = create_session(user_id, 'majlis')
             if not session_token:
                 return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
             
+            print(f"Successfully created new session for Majlis user {user_id}")
             response = redirect(url_for('majlis'))
             response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
             return response
@@ -2915,6 +2969,9 @@ def logout():
     """Logout route - clear session"""
     if 'session_token' in request.cookies:
         session_token = request.cookies.get('session_token')
+        session_info = verify_session(session_token)
+        if session_info:
+            print(f"User {session_info['user_id']} ({session_info['user_type']}) logged out")
         logout_session(session_token)
     
     response = redirect(url_for('index'))
@@ -3648,8 +3705,16 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
                                         <form method="POST" action="{{ url_for('admin_kick_session') }}" style="display: inline;">
                                             <input type="hidden" name="session_token" value="{{ session.session_token }}">
                                             <button type="submit" class="btn btn-danger btn-sm" 
-                                                    onclick="return confirm('Kick this user?')">
-                                                <i class="fas fa-user-times"></i>
+                                                    onclick="return confirm('Kick this session?')">
+                                                <i class="fas fa-user-times"></i> Kick
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin_force_login') }}" style="display: inline;">
+                                            <input type="hidden" name="user_id" value="{{ session.user_id }}">
+                                            <input type="hidden" name="user_type" value="its">
+                                            <button type="submit" class="btn btn-warning btn-sm" 
+                                                    onclick="return confirm('Force-logout ALL sessions for ITS user {{ session.user_id }}?')">
+                                                <i class="fas fa-exclamation-triangle"></i> Force
                                             </button>
                                         </form>
                                     </td>
@@ -3684,8 +3749,16 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
                                         <form method="POST" action="{{ url_for('admin_kick_session') }}" style="display: inline;">
                                             <input type="hidden" name="session_token" value="{{ session.session_token }}">
                                             <button type="submit" class="btn btn-danger btn-sm" 
-                                                    onclick="return confirm('Kick this user?')">
-                                                <i class="fas fa-user-times"></i>
+                                                    onclick="return confirm('Kick this session?')">
+                                                <i class="fas fa-user-times"></i> Kick
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin_force_login') }}" style="display: inline;">
+                                            <input type="hidden" name="user_id" value="{{ session.user_id }}">
+                                            <input type="hidden" name="user_type" value="majlis">
+                                            <button type="submit" class="btn btn-warning btn-sm" 
+                                                    onclick="return confirm('Force-logout ALL sessions for Majlis user {{ session.user_id }}?')">
+                                                <i class="fas fa-exclamation-triangle"></i> Force
                                             </button>
                                         </form>
                                     </td>
@@ -4112,6 +4185,29 @@ def admin_refresh_cache():
     except Exception as e:
         print(f"Error refreshing cache: {e}")
         return redirect(url_for('admin_dashboard') + f'?message=Error refreshing cache: {str(e)}&type=error')
+
+@app.route('/admin/force_login', methods=['POST'])
+@admin_required
+def admin_force_login():
+    """Allow an admin to force-kick existing sessions for a user"""
+    user_id = request.form.get('user_id', '').strip()
+    user_type = request.form.get('user_type', '').strip()
+    
+    if not user_id or not user_type:
+        return redirect(url_for('admin_dashboard') + '?message=Invalid user ID or type&type=error')
+    
+    if user_type not in ['its', 'majlis']:
+        return redirect(url_for('admin_dashboard') + '?message=Invalid user type&type=error')
+    
+    try:
+        removed_count = remove_existing_user_sessions(user_id, user_type)
+        if removed_count > 0:
+            return redirect(url_for('admin_dashboard') + f'?message=Force-kicked {removed_count} sessions for {user_type.upper()} user {user_id}. User can now login from new device.&type=success')
+        else:
+            return redirect(url_for('admin_dashboard') + f'?message=No active sessions found for {user_type.upper()} user {user_id}&type=error')
+    except Exception as e:
+        print(f"Error force-logging out user: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error force-logging out user: {str(e)}&type=error')
 
 
 if __name__ == '__main__':
