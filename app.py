@@ -591,19 +591,8 @@ LOGIN_TEMPLATE = '''
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal - Login</title>
-    
-    <!-- DNS preconnect optimization -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <!-- Optimized font loading -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
-    
-    <!-- Preload background image -->
-    <link rel="preload" href="https://i.ibb.co/JWTvVh2f/background-1.png" as="image">
-    
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
         
         :root {
             --brand-primary: #0a3da0;
@@ -650,14 +639,13 @@ LOGIN_TEMPLATE = '''
         
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: var(--bg-dark) url('https://i.ibb.co/JWTvVh2f/background-1.png') center/cover no-repeat fixed;
+            background: url('https://i.ibb.co/JWTvVh2f/background-1.png') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            font-display: swap;
             overflow-x: hidden;
         }
 
@@ -1025,19 +1013,6 @@ LOGIN_TEMPLATE = '''
             }
         });
 
-        // Service Worker registration for offline support
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful');
-                    })
-                    .catch(function(err) {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
-        }
-
         // Disable right-click and dev tools
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('keydown', function(e) {
@@ -1062,28 +1037,10 @@ WEBINAR_TEMPLATE_IMPROVED = '''
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>{{ webinar_title }} - Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal</title>
-    
-    <!-- DNS preconnect optimization for faster resource loading -->
-    <link rel="preconnect" href="https://www.youtube.com">
-    <link rel="preconnect" href="https://i.ytimg.com">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    
-    <!-- Optimized font loading with font-display: swap -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
-    
-    <!-- Font Awesome with preload for critical icons -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
-    
-    <!-- Preload critical images -->
-    <link rel="preload" href="https://i.ibb.co/JWTvVh2f/background-1.png" as="image">
-    <link rel="preload" href="https://i.ibb.co/nqfBrMmC/logo-without-back.png" as="image">
-    
-    <!-- Critical CSS inlined for faster rendering -->
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
         
         :root {
             /* Premium color system */
@@ -1142,7 +1099,7 @@ WEBINAR_TEMPLATE_IMPROVED = '''
 
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: var(--bg-dark) url('https://i.ibb.co/JWTvVh2f/background-1.png') center/cover no-repeat fixed;
+            background: url('https://i.ibb.co/JWTvVh2f/background-1.png') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -1150,7 +1107,6 @@ WEBINAR_TEMPLATE_IMPROVED = '''
             position: relative;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            font-display: swap; /* Optimize font loading */
         }
 
         /* Background Effects */
@@ -1556,97 +1512,6 @@ WEBINAR_TEMPLATE_IMPROVED = '''
         .video-container.fullscreen .video-wrapper {
             padding-bottom: 0;
             height: 100vh;
-        }
-
-        /* Video thumbnail styles */
-        .video-thumbnail {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-        }
-
-        .video-thumbnail img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: var(--transition-normal);
-        }
-
-        .video-thumbnail:hover img {
-            transform: scale(1.02);
-        }
-
-        .thumbnail-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.3);
-            transition: var(--transition-normal);
-        }
-
-        .video-thumbnail:hover .thumbnail-overlay {
-            background: rgba(0, 0, 0, 0.5);
-        }
-
-        .play-button-large {
-            width: 80px;
-            height: 80px;
-            background: var(--gradient-brand);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow-brand);
-            transition: var(--transition-bounce);
-            border: 3px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .play-button-large:hover {
-            transform: scale(1.1);
-            box-shadow: 0 12px 40px rgba(10, 61, 160, 0.4);
-        }
-
-        .play-button-large i {
-            font-size: 2rem;
-            color: white;
-            margin-left: 4px; /* Offset for visual centering */
-        }
-
-        .quality-selector {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            gap: 8px;
-        }
-
-        .quality-btn {
-            padding: 6px 12px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: var(--radius-sm);
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: var(--transition-fast);
-        }
-
-        .quality-btn:hover,
-        .quality-btn.active {
-            background: var(--brand-primary);
-            border-color: var(--brand-primary-light);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
         }
 
         .video-frame {
@@ -2158,44 +2023,22 @@ WEBINAR_TEMPLATE_IMPROVED = '''
 
         <div class="video-container" id="videoContainer">
             <div class="video-wrapper">
-                <!-- Lazy loading: Show thumbnail initially -->
-                <div class="video-thumbnail" id="videoThumbnail">
-                    <img src="https://i.ytimg.com/vi/{{ youtube_video_id }}/maxresdefault.jpg" 
-                         alt="Video Thumbnail" 
-                         loading="lazy"
-                         onerror="this.src='https://i.ytimg.com/vi/{{ youtube_video_id }}/hqdefault.jpg'">
-                    <div class="thumbnail-overlay">
-                        <div class="play-button-large" id="playButtonLarge">
-                            <i class="fas fa-play"></i>
-                        </div>
-                        <div class="quality-selector" id="qualitySelector">
-                            <button class="quality-btn" data-quality="720">720p</button>
-                            <button class="quality-btn" data-quality="480">480p</button>
-                            <button class="quality-btn active" data-quality="auto">Auto</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Loading overlay for when iframe loads -->
-                <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+                <div class="loading-overlay" id="loadingOverlay">
                     <div class="loading-spinner"></div>
-                    <div class="loading-text">Loading stream...</div>
+                    <div class="loading-text">Connecting to live stream...</div>
                 </div>
-                
-                <!-- Iframe loaded lazily -->
                 <iframe 
                     class="video-frame" 
                     id="videoFrame"
-                    data-src="{{ embed_url }}"
+                    src="{{ embed_url }}"
                     allow="autoplay; encrypted-media; fullscreen"
                     allowfullscreen
-                    playsinline
-                    style="display: none;">
+                    playsinline>
                 </iframe>
                 <div class="video-overlay"></div>
                 <div class="youtube-brand-blocker"></div>
                 <div class="video-click-layer" id="videoClickLayer"></div>
-                <div class="custom-play-button" id="playButton" style="display: none;">
+                <div class="custom-play-button" id="playButton">
                     <div class="play-icon"></div>
                 </div>
                 <div class="control-group">
@@ -2236,14 +2079,6 @@ WEBINAR_TEMPLATE_IMPROVED = '''
             const header = document.getElementById('header');
             const container = document.getElementById('container');
             const webinarInfo = document.getElementById('webinarInfo');
-            
-            // Lazy loading elements
-            const videoThumbnail = document.getElementById('videoThumbnail');
-            const playButtonLarge = document.getElementById('playButtonLarge');
-            const qualitySelector = document.getElementById('qualitySelector');
-            
-            let selectedQuality = 'auto';
-            let videoLoaded = false;
 
             // Debug logging
             console.log('Elements loaded:', {
@@ -2254,82 +2089,19 @@ WEBINAR_TEMPLATE_IMPROVED = '''
                 fullscreenIcon: !!fullscreenIcon
             });
 
-            // Lazy loading functions
-            function loadVideo() {
-                if (videoLoaded) return;
-                
-                // Show loading overlay
-                if (loadingOverlay) {
-                    loadingOverlay.style.display = 'flex';
-                }
-                
-                // Hide thumbnail
-                if (videoThumbnail) {
-                    videoThumbnail.style.display = 'none';
-                }
-                
-                // Load iframe
-                if (videoFrame && videoFrame.getAttribute('data-src')) {
-                    let embedUrl = videoFrame.getAttribute('data-src');
-                    
-                    // Add quality parameter if selected
-                    if (selectedQuality !== 'auto') {
-                        embedUrl += `&vq=${selectedQuality}`;
-                    }
-                    
-                    videoFrame.src = embedUrl;
-                    videoFrame.style.display = 'block';
-                    
-                    // Show controls after video loads
-                    videoFrame.addEventListener('load', function() {
-                        setTimeout(() => {
-                            if (loadingOverlay) {
-                                loadingOverlay.style.opacity = '0';
-                                setTimeout(() => {
-                                    loadingOverlay.style.display = 'none';
-                                }, 500);
-                            }
-                            if (playButton) playButton.style.display = 'none';
-                        }, 1000);
-                    });
-                    
-                    videoLoaded = true;
-                }
-            }
-
-            // Quality selector functionality
-            if (qualitySelector) {
-                qualitySelector.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    if (e.target.classList.contains('quality-btn')) {
-                        // Update active quality button
-                        qualitySelector.querySelectorAll('.quality-btn').forEach(btn => 
-                            btn.classList.remove('active')
-                        );
-                        e.target.classList.add('active');
-                        selectedQuality = e.target.getAttribute('data-quality');
-                        console.log('Quality selected:', selectedQuality);
-                    }
+            // Hide loading overlay after iframe loads
+            if (videoFrame) {
+                videoFrame.addEventListener('load', function() {
+                    setTimeout(() => {
+                        if (loadingOverlay) {
+                            loadingOverlay.style.opacity = '0';
+                            setTimeout(() => {
+                                loadingOverlay.style.display = 'none';
+                            }, 500);
+                        }
+                    }, 1000);
                 });
             }
-
-            // Large play button click (lazy load video)
-            if (playButtonLarge) {
-                playButtonLarge.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    console.log('Large play button clicked, loading video...');
-                    loadVideo();
-                });
-            }
-
-            // Thumbnail click (lazy load video)
-            if (videoThumbnail) {
-                videoThumbnail.addEventListener('click', function() {
-                    console.log('Thumbnail clicked, loading video...');
-                    loadVideo();
-                });
-            }
-
 
             // Video click to pause/play
             if (videoClickLayer) {
@@ -2610,33 +2382,22 @@ WEBINAR_TEMPLATE_IMPROVED = '''
         document.addEventListener('touchmove', preventScroll, { passive: false });
         document.addEventListener('wheel', preventScroll, { passive: false });
 
-        // Performance optimization: Throttle resize events with RAF
+        // Performance optimization: Throttle resize events
         let resizeTimeout;
-        let isResizing = false;
-        
-        function handleResize() {
-            if (isFullscreen) {
-                // Batch DOM operations to prevent layout thrashing
-                const videoContainer = document.getElementById('videoContainer');
-                if (videoContainer) {
-                    // Use transform instead of changing width/height for better performance
-                    videoContainer.style.transform = 'scale(1)'; // Trigger hardware acceleration
-                    videoContainer.style.width = '100vw';
-                    videoContainer.style.height = '100vh';
-                }
-            }
-            isResizing = false;
-        }
-        
         window.addEventListener('resize', function() {
-            if (!isResizing) {
-                isResizing = true;
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    requestAnimationFrame(handleResize);
-                }, 150);
-            }
-        }, { passive: true });
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                // Handle any resize-specific logic here if needed
+                if (isFullscreen) {
+                    // Ensure fullscreen container maintains proper dimensions
+                    const videoContainer = document.getElementById('videoContainer');
+                    if (videoContainer) {
+                        videoContainer.style.width = '100vw';
+                        videoContainer.style.height = '100vh';
+                    }
+                }
+            }, 150);
+        });
     </script>
     
     <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(9, 13, 27, 0.8); backdrop-filter: blur(10px); padding: 10px; text-align: center; font-size: 0.85rem; color: rgba(255, 255, 255, 0.65); border-top: 1px solid rgba(212, 175, 55, 0.2);">
@@ -2671,84 +2432,25 @@ WEBINAR_TEMPLATE_IMPROVED = '''
             }
         });
         
-        // Optimized inactivity management with throttling
+        // Auto logout after inactivity (30 minutes)
         let inactivityTimer;
-        let lastActivity = Date.now();
-        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-        const THROTTLE_DELAY = 1000; // Throttle activity checks to 1 second
+        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
         
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer);
             inactivityTimer = setTimeout(function() {
-                // Clean up event listeners before redirect
-                cleanup();
                 alert("You've been inactive for 30 minutes. You will be logged out for security reasons.");
                 window.location.href = "{{ url_for('logout') }}";
             }, INACTIVITY_TIMEOUT);
         }
         
-        // Throttled activity handler for better performance
-        function handleActivity() {
-            const now = Date.now();
-            if (now - lastActivity > THROTTLE_DELAY) {
-                lastActivity = now;
-                resetInactivityTimer();
-            }
-        }
-        
-        // Event delegation for better performance
-        const activityEvents = ['mousedown', 'keypress', 'touchstart', 'scroll'];
-        const activityHandler = (event) => {
-            // Only handle events from user interactions, not programmatic ones
-            if (event.isTrusted) {
-                handleActivity();
-            }
-        };
-        
-        // Add single event listener with delegation
-        activityEvents.forEach(eventType => {
-            document.addEventListener(eventType, activityHandler, { passive: true, capture: true });
+        // Reset timer on user activity
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(function(event) {
+            document.addEventListener(event, resetInactivityTimer, true);
         });
-        
-        // Separate mousemove handler with additional throttling for performance
-        let mouseMoveTimeout;
-        document.addEventListener('mousemove', function(event) {
-            if (event.isTrusted) {
-                clearTimeout(mouseMoveTimeout);
-                mouseMoveTimeout = setTimeout(handleActivity, 500); // More aggressive throttling for mousemove
-            }
-        }, { passive: true });
-        
-        // Memory cleanup function
-        function cleanup() {
-            clearTimeout(inactivityTimer);
-            clearTimeout(mouseMoveTimeout);
-            clearTimeout(resizeTimeout);
-            
-            // Remove event listeners
-            activityEvents.forEach(eventType => {
-                document.removeEventListener(eventType, activityHandler, { passive: true, capture: true });
-            });
-        }
         
         // Start the timer
         resetInactivityTimer();
-        
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', cleanup);
-        
-        // Service Worker registration for offline support
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(function(err) {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
-        }
     </script>
 </body>
 </html>
@@ -3121,117 +2823,6 @@ def health_check():
         'status': 'ok',
         'timestamp': datetime.now().isoformat(),
         'version': '2.0.0'
-    })
-
-@app.route('/service-worker.js')
-def service_worker():
-    """Serve the service worker script for offline functionality"""
-    service_worker_js = '''
-const CACHE_NAME = 'ratlam-relay-v1';
-const urlsToCache = [
-    '/',
-    'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://i.ibb.co/JWTvVh2f/background-1.png',
-    'https://i.ibb.co/nqfBrMmC/logo-without-back.png'
-];
-
-// Install event - cache critical assets
-self.addEventListener('install', function(event) {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(function(cache) {
-                console.log('ServiceWorker: Caching critical assets');
-                return cache.addAll(urlsToCache);
-            })
-            .catch(function(err) {
-                console.log('ServiceWorker: Cache install error:', err);
-            })
-    );
-    self.skipWaiting(); // Activate immediately
-});
-
-// Fetch event - serve from cache when offline
-self.addEventListener('fetch', function(event) {
-    // Skip cross-origin requests and non-GET requests
-    if (!event.request.url.startsWith(self.location.origin) || event.request.method !== 'GET') {
-        return;
-    }
-    
-    // Skip YouTube and video streaming requests (these need to be online)
-    if (event.request.url.includes('youtube.com') || 
-        event.request.url.includes('ytimg.com') ||
-        event.request.url.includes('googlevideo.com')) {
-        return;
-    }
-    
-    event.respondWith(
-        caches.match(event.request)
-            .then(function(response) {
-                // Return cached version if available
-                if (response) {
-                    return response;
-                }
-                
-                // Fetch from network and cache for future use
-                return fetch(event.request).then(function(response) {
-                    // Only cache valid responses
-                    if (!response || response.status !== 200 || response.type !== 'basic') {
-                        return response;
-                    }
-                    
-                    const responseToCache = response.clone();
-                    
-                    caches.open(CACHE_NAME)
-                        .then(function(cache) {
-                            cache.put(event.request, responseToCache);
-                        });
-                    
-                    return response;
-                });
-            })
-            .catch(function() {
-                // Return cached homepage for navigation requests when offline
-                if (event.request.destination === 'document') {
-                    return caches.match('/');
-                }
-            })
-    );
-});
-
-// Activate event - clean up old caches
-self.addEventListener('activate', function(event) {
-    const cacheWhitelist = [CACHE_NAME];
-    
-    event.waitUntil(
-        caches.keys().then(function(cacheNames) {
-            return Promise.all(
-                cacheNames.map(function(cacheName) {
-                    if (cacheWhitelist.indexOf(cacheName) === -1) {
-                        console.log('ServiceWorker: Deleting old cache:', cacheName);
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
-    );
-    
-    return self.clients.claim(); // Take control immediately
-});
-
-// Background sync for offline form submissions (future enhancement)
-self.addEventListener('sync', function(event) {
-    if (event.tag === 'background-sync') {
-        console.log('ServiceWorker: Background sync triggered');
-    }
-});
-'''
-    
-    from flask import Response
-    return Response(service_worker_js, mimetype='application/javascript', headers={
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
     })
 
 @app.route('/api/status')
