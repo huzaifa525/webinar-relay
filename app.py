@@ -17,15 +17,30 @@ import hashlib
 import secrets
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import create_engine
+from sqlalchemy.pool import QueuePool
 import json
+import redis
 
 app = Flask(__name__)
 app.secret_key = 'Huzaifa53'
 
-# Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:bHaJHoNZuiNzjhOMRkiCwlsgvxsHyUxM@yamabiko.proxy.rlwy.net:37305/railway'
+# Database configuration with connection pooling
+DATABASE_URL = 'postgresql://postgres:bHaJHoNZuiNzjhOMRkiCwlsgvxsHyUxM@yamabiko.proxy.rlwy.net:37305/railway'
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'poolclass': QueuePool,
+    'pool_size': 3,
+    'pool_timeout': 30,
+    'pool_recycle': 3600,
+    'max_overflow': 0
+}
 db = SQLAlchemy(app)
+
+# Redis configuration
+REDIS_URL = "redis://default:disvEqUIUIJGKERTqkWhdgWOxncsbaJR@switchback.proxy.rlwy.net:43339"
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 # Admin credentials (you can modify these)
 ADMIN_USERNAME = 'admin'
@@ -58,6 +73,14 @@ class AdminCredential(db.Model):
     def __repr__(self):
         return f'<Admin {self.username}>'
 
+class MajlisID(db.Model):
+    __tablename__ = 'majlis_ids'
+    id = db.Column(db.String(8), primary_key=True)
+    added_at = db.Column(db.DateTime, default=datetime.now)
+    
+    def __repr__(self):
+        return f'<MajlisID {self.id}>'
+
 class WebinarSetting(db.Model):
     __tablename__ = 'webinar_settings'
     id = db.Column(db.Integer, primary_key=True)
@@ -77,6 +100,25 @@ class WebinarSetting(db.Model):
         """Generate the full embed URL from the video ID"""
         return f"https://www.youtube.com/embed/{self.youtube_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1"
 
+class MajlisWebinarSetting(db.Model):
+    __tablename__ = 'majlis_webinar_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    youtube_video_id = db.Column(db.String(50), nullable=False)
+    webinar_title = db.Column(db.String(200), nullable=False)
+    webinar_description = db.Column(db.Text, nullable=True)
+    webinar_date = db.Column(db.String(100), nullable=True)
+    webinar_time = db.Column(db.String(100), nullable=True)
+    webinar_speaker = db.Column(db.String(200), nullable=True)
+    no_webinar = db.Column(db.Boolean, default=False)
+    
+    def __repr__(self):
+        return f'<MajlisWebinarSettings {self.webinar_title}>'
+        
+    @property
+    def embed_url(self):
+        """Generate the full embed URL from the video ID"""
+        return f"https://www.youtube.com/embed/{self.youtube_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1"
+
 def init_database():
     """Initialize database tables and default data if they don't exist"""
     # Create tables if they don't exist
@@ -90,12 +132,12 @@ def init_database():
         db.session.add(admin)
         db.session.commit()
     
-    # Check if webinar settings exist, if not create default settings
+    # Check if ITS webinar settings exist, if not create default settings
     settings = WebinarSetting.query.first()
     if not settings:
         default_settings = WebinarSetting(
-            youtube_video_id="GXRL7PcPbOA",  # Just the YouTube video ID
-            webinar_title="Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal",
+            youtube_video_id="GXRL7PcPbOA",
+            webinar_title="Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal - ITS",
             webinar_description="Welcome to the live portal of Anjuman e Hakimi Najmi Mohallah Ratlam. This stream is authorized for ITS members only. Please do not share this link with others.",
             webinar_date="August 9-15, 2025",
             webinar_time="7:30 AM - 12:30 PM IST",
@@ -104,18 +146,109 @@ def init_database():
         )
         db.session.add(default_settings)
         db.session.commit()
+    
+    # Check if Majlis webinar settings exist, if not create default settings
+    majlis_settings = MajlisWebinarSetting.query.first()
+    if not majlis_settings:
+        default_majlis_settings = MajlisWebinarSetting(
+            youtube_video_id="GXRL7PcPbOA",
+            webinar_title="Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal - Majlis",
+            webinar_description="Welcome to the live portal of Anjuman e Hakimi Najmi Mohallah Ratlam. This stream is authorized for Majlis members only. Please do not share this link with others.",
+            webinar_date="August 9-15, 2025",
+            webinar_time="7:30 AM - 12:30 PM IST",
+            webinar_speaker="His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
+            no_webinar=False
+        )
+        db.session.add(default_majlis_settings)
+        db.session.commit()
+    
+    # Initialize Redis cache
+    refresh_redis_cache()
+
+# Redis Cache Functions
+def refresh_redis_cache():
+    """Refresh all Redis cache from database"""
+    try:
+        # Cache ITS IDs
+        its_ids = ItsID.query.all()
+        redis_client.delete('cached:its_ids')
+        if its_ids:
+            redis_client.sadd('cached:its_ids', *[its_id.id for its_id in its_ids])
+        
+        # Cache Majlis IDs
+        majlis_ids = MajlisID.query.all()
+        redis_client.delete('cached:majlis_ids')
+        if majlis_ids:
+            redis_client.sadd('cached:majlis_ids', *[majlis_id.id for majlis_id in majlis_ids])
+        
+        # Cache ITS webinar settings
+        its_settings = WebinarSetting.query.first()
+        if its_settings:
+            settings_dict = {
+                "embed_url": its_settings.embed_url,
+                "youtube_video_id": its_settings.youtube_video_id,
+                "webinar_title": its_settings.webinar_title,
+                "webinar_description": its_settings.webinar_description,
+                "webinar_date": its_settings.webinar_date,
+                "webinar_time": its_settings.webinar_time,
+                "webinar_speaker": its_settings.webinar_speaker,
+                "no_webinar": its_settings.no_webinar
+            }
+            redis_client.set('cached:webinar_settings', json.dumps(settings_dict))
+        
+        # Cache Majlis webinar settings
+        majlis_settings = MajlisWebinarSetting.query.first()
+        if majlis_settings:
+            majlis_settings_dict = {
+                "embed_url": majlis_settings.embed_url,
+                "youtube_video_id": majlis_settings.youtube_video_id,
+                "webinar_title": majlis_settings.webinar_title,
+                "webinar_description": majlis_settings.webinar_description,
+                "webinar_date": majlis_settings.webinar_date,
+                "webinar_time": majlis_settings.webinar_time,
+                "webinar_speaker": majlis_settings.webinar_speaker,
+                "no_webinar": majlis_settings.no_webinar
+            }
+            redis_client.set('cached:majlis_settings', json.dumps(majlis_settings_dict))
+            
+        print("Redis cache refreshed successfully")
+    except Exception as e:
+        print(f"Error refreshing Redis cache: {e}")
+
+def is_its_id_valid(its_id):
+    """Check if ITS ID is valid using Redis cache"""
+    try:
+        return redis_client.sismember('cached:its_ids', its_id)
+    except Exception as e:
+        print(f"Error checking ITS ID: {e}")
+        return False
+
+def is_majlis_id_valid(majlis_id):
+    """Check if Majlis ID is valid using Redis cache"""
+    try:
+        return redis_client.sismember('cached:majlis_ids', majlis_id)
+    except Exception as e:
+        print(f"Error checking Majlis ID: {e}")
+        return False
 
 def load_its_ids():
-    """Load ITS IDs from database"""
+    """Load ITS IDs from Redis cache"""
     try:
-        its_ids = ItsID.query.all()
-        return {its_id.id for its_id in its_ids}
+        return set(redis_client.smembers('cached:its_ids'))
     except Exception as e:
-        print(f"Error loading ITS IDs: {e}")
+        print(f"Error loading ITS IDs from cache: {e}")
+        return set()
+
+def load_majlis_ids():
+    """Load Majlis IDs from Redis cache"""
+    try:
+        return set(redis_client.smembers('cached:majlis_ids'))
+    except Exception as e:
+        print(f"Error loading Majlis IDs from cache: {e}")
         return set()
 
 def save_its_id(its_id):
-    """Save a new ITS ID to database"""
+    """Save a new ITS ID to database and update Redis cache"""
     try:
         # Check if ID already exists
         existing = ItsID.query.get(its_id)
@@ -123,160 +256,138 @@ def save_its_id(its_id):
             new_id = ItsID(id=its_id)
             db.session.add(new_id)
             db.session.commit()
+            # Update Redis cache
+            redis_client.sadd('cached:its_ids', its_id)
         return True
     except Exception as e:
         print(f"Error saving ITS ID: {e}")
         db.session.rollback()
         return False
 
+def save_majlis_id(majlis_id):
+    """Save a new Majlis ID to database and update Redis cache"""
+    try:
+        # Check if ID already exists
+        existing = MajlisID.query.get(majlis_id)
+        if not existing:
+            new_id = MajlisID(id=majlis_id)
+            db.session.add(new_id)
+            db.session.commit()
+            # Update Redis cache
+            redis_client.sadd('cached:majlis_ids', majlis_id)
+        return True
+    except Exception as e:
+        print(f"Error saving Majlis ID: {e}")
+        db.session.rollback()
+        return False
+
 def delete_its_id(its_id):
-    """Delete an ITS ID from database"""
+    """Delete an ITS ID from database and update Redis cache"""
     try:
         existing = ItsID.query.get(its_id)
         if existing:
             db.session.delete(existing)
             db.session.commit()
+            # Update Redis cache
+            redis_client.srem('cached:its_ids', its_id)
         return True
     except Exception as e:
         print(f"Error deleting ITS ID: {e}")
         db.session.rollback()
         return False
 
-def load_sessions():
-    """Load active sessions from database as a dictionary"""
+def delete_majlis_id(majlis_id):
+    """Delete a Majlis ID from database and update Redis cache"""
+    try:
+        existing = MajlisID.query.get(majlis_id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+            # Update Redis cache
+            redis_client.srem('cached:majlis_ids', majlis_id)
+        return True
+    except Exception as e:
+        print(f"Error deleting Majlis ID: {e}")
+        db.session.rollback()
+        return False
+
+# Redis Session Management Functions
+def create_session(user_id, user_type='its'):
+    """Create a new session in Redis with 24h TTL"""
+    session_token = secrets.token_urlsafe(32)
+    now = datetime.now()
+    
+    try:
+        session_data = {
+            'user_type': user_type,
+            'user_id': str(user_id),
+            'login_time': now.isoformat(),
+            'last_activity': now.isoformat()
+        }
+        # Store session with 24 hour TTL (86400 seconds)
+        redis_client.setex(f'sessions:{session_token}', 86400, json.dumps(session_data))
+        return session_token
+    except Exception as e:
+        print(f"Error creating session: {e}")
+        return None
+
+def verify_session(session_token):
+    """Verify if session token is valid and update last activity"""
+    try:
+        session_key = f'sessions:{session_token}'
+        session_data = redis_client.get(session_key)
+        
+        if session_data:
+            # Update last activity time
+            session_info = json.loads(session_data)
+            session_info['last_activity'] = datetime.now().isoformat()
+            redis_client.setex(session_key, 86400, json.dumps(session_info))
+            return session_info
+        return None
+    except Exception as e:
+        print(f"Error verifying session: {e}")
+        return None
+
+def logout_session(session_token):
+    """Remove session from Redis"""
+    try:
+        redis_client.delete(f'sessions:{session_token}')
+        return True
+    except Exception as e:
+        print(f"Error logging out session: {e}")
+        return False
+
+def get_all_sessions():
+    """Get all active sessions from Redis"""
     try:
         sessions = {}
-        active_sessions = ActiveSession.query.all()
+        session_keys = redis_client.keys('sessions:*')
         
-        for session in active_sessions:
-            sessions[session.token] = {
-                'its_id': session.its_id,
-                'login_time': session.login_time.isoformat(),
-                'last_activity': session.last_activity.isoformat()
-            }
+        for key in session_keys:
+            session_data = redis_client.get(key)
+            if session_data:
+                token = key.replace('sessions:', '')
+                sessions[token] = json.loads(session_data)
+        
         return sessions
     except Exception as e:
         print(f"Error loading sessions: {e}")
         return {}
 
-def save_session(token, its_id, login_time, last_activity):
-    """Save a session to database"""
+def clear_all_sessions():
+    """Clear all sessions from Redis"""
     try:
-        # Check if session already exists
-        existing = ActiveSession.query.get(token)
-        if existing:
-            existing.last_activity = last_activity
-            db.session.commit()
-        else:
-            new_session = ActiveSession(
-                token=token,
-                its_id=its_id,
-                login_time=login_time,
-                last_activity=last_activity
-            )
-            db.session.add(new_session)
-            db.session.commit()
+        session_keys = redis_client.keys('sessions:*')
+        if session_keys:
+            redis_client.delete(*session_keys)
         return True
     except Exception as e:
-        print(f"Error saving session: {e}")
-        db.session.rollback()
+        print(f"Error clearing sessions: {e}")
         return False
 
-def delete_session(token):
-    """Delete a session from database"""
-    try:
-        session = ActiveSession.query.get(token)
-        if session:
-            db.session.delete(session)
-            db.session.commit()
-        return True
-    except Exception as e:
-        print(f"Error deleting session: {e}")
-        db.session.rollback()
-        return False
-
-def cleanup_expired_sessions():
-    """Remove expired or inactive sessions"""
-    current_time = datetime.now()
-    
-    try:
-        # Find sessions expired by total time (24 hours)
-        expired_by_time = ActiveSession.query.filter(
-            current_time - ActiveSession.login_time > timedelta(hours=24)
-        ).all()
-        
-        # Find sessions expired by inactivity (30 minutes)
-        expired_by_inactivity = ActiveSession.query.filter(
-            current_time - ActiveSession.last_activity > timedelta(minutes=30)
-        ).all()
-        
-        # Combine and delete all expired sessions
-        expired_sessions = set(expired_by_time + expired_by_inactivity)
-        
-        for session in expired_sessions:
-            db.session.delete(session)
-            
-        db.session.commit()
-    except Exception as e:
-        print(f"Error cleaning up sessions: {e}")
-        db.session.rollback()
-
-def is_its_logged_in(its_id):
-    """Check if ITS ID already has an active session"""
-    cleanup_expired_sessions()
-    
-    # Check if any active session exists for this ITS ID
-    session_exists = ActiveSession.query.filter_by(its_id=str(its_id)).first() is not None
-    return session_exists
-
-def create_session(its_id):
-    """Create a new session for ITS ID"""
-    session_token = secrets.token_urlsafe(32)
-    now = datetime.now()
-    
-    try:
-        new_session = ActiveSession(
-            token=session_token,
-            its_id=str(its_id),
-            login_time=now,
-            last_activity=now
-        )
-        db.session.add(new_session)
-        db.session.commit()
-        return session_token
-    except Exception as e:
-        print(f"Error creating session: {e}")
-        db.session.rollback()
-        return None
-
-def verify_session(session_token):
-    """Verify if session token is valid and update last activity"""
-    cleanup_expired_sessions()
-    
-    try:
-        session = ActiveSession.query.get(session_token)
-        if session:
-            # Update last activity time
-            session.last_activity = datetime.now()
-            db.session.commit()
-            return True
-        return False
-    except Exception as e:
-        print(f"Error verifying session: {e}")
-        return False
-
-def logout_session(session_token):
-    """Remove session"""
-    try:
-        session = ActiveSession.query.get(session_token)
-        if session:
-            db.session.delete(session)
-            db.session.commit()
-        return True
-    except Exception as e:
-        print(f"Error logging out session: {e}")
-        db.session.rollback()
-        return False
+def kick_session(session_token):
+    """Remove a specific session"""
+    return logout_session(session_token)
 
 def admin_required(f):
     """Decorator for admin-only routes"""
@@ -288,12 +399,38 @@ def admin_required(f):
     return decorated_function
 
 def load_webinar_settings():
-    """Load webinar settings from database"""
+    """Load ITS webinar settings from Redis cache"""
+    try:
+        settings_data = redis_client.get('cached:webinar_settings')
+        if settings_data:
+            return json.loads(settings_data)
+        else:
+            # Fallback to database if cache is empty
+            return _load_its_settings_from_db()
+    except Exception as e:
+        print(f"Error loading ITS webinar settings from cache: {e}")
+        return _load_its_settings_from_db()
+
+def load_majlis_webinar_settings():
+    """Load Majlis webinar settings from Redis cache"""
+    try:
+        settings_data = redis_client.get('cached:majlis_settings')
+        if settings_data:
+            return json.loads(settings_data)
+        else:
+            # Fallback to database if cache is empty
+            return _load_majlis_settings_from_db()
+    except Exception as e:
+        print(f"Error loading Majlis webinar settings from cache: {e}")
+        return _load_majlis_settings_from_db()
+
+def _load_its_settings_from_db():
+    """Fallback function to load ITS settings from database"""
     try:
         settings = WebinarSetting.query.first()
         if settings:
             return {
-                "embed_url": settings.embed_url,  # Use the computed property for backward compatibility
+                "embed_url": settings.embed_url,
                 "youtube_video_id": settings.youtube_video_id,
                 "webinar_title": settings.webinar_title,
                 "webinar_description": settings.webinar_description,
@@ -302,33 +439,52 @@ def load_webinar_settings():
                 "webinar_speaker": settings.webinar_speaker,
                 "no_webinar": settings.no_webinar
             }
-        else:
-            # Return default settings if nothing in database
-            default_video_id = "GXRL7PcPbOA"
+    except Exception as e:
+        print(f"Error loading ITS settings from database: {e}")
+    
+    # Default settings
+    default_video_id = "GXRL7PcPbOA"
+    return {
+        "embed_url": f"https://www.youtube.com/embed/{default_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
+        "youtube_video_id": default_video_id,
+        "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay (ITS)",
+        "webinar_description": "Welcome to the live relay of Ashara Mubaraka 1447. This stream is authorized for ITS members only.",
+        "webinar_date": "August 9-15, 2025",
+        "webinar_time": "7:30 AM - 12:30 PM IST",
+        "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
+        "no_webinar": False
+    }
+
+def _load_majlis_settings_from_db():
+    """Fallback function to load Majlis settings from database"""
+    try:
+        settings = MajlisWebinarSetting.query.first()
+        if settings:
             return {
-                "embed_url": f"https://www.youtube.com/embed/{default_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
-                "youtube_video_id": default_video_id,
-                "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay",
-                "webinar_description": "Welcome to the live relay of Ashara Mubaraka 1447. This stream is authorized for ITS members only. Please do not share this link with others.",
-                "webinar_date": "June 18-27, 2025",
-                "webinar_time": "7:30 AM - 12:30 PM IST",
-                "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
-                "no_webinar": False
+                "embed_url": settings.embed_url,
+                "youtube_video_id": settings.youtube_video_id,
+                "webinar_title": settings.webinar_title,
+                "webinar_description": settings.webinar_description,
+                "webinar_date": settings.webinar_date,
+                "webinar_time": settings.webinar_time,
+                "webinar_speaker": settings.webinar_speaker,
+                "no_webinar": settings.no_webinar
             }
     except Exception as e:
-        print(f"Error loading webinar settings: {e}")
-        # Return default settings if there's an error
-        default_video_id = "GXRL7PcPbOA"
-        return {
-            "embed_url": f"https://www.youtube.com/embed/{default_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
-            "youtube_video_id": default_video_id,
-            "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay",
-            "webinar_description": "Welcome to the live relay of Ashara Mubaraka 1447. This stream is authorized for ITS members only. Please do not share this link with others.",
-            "webinar_date": "June 18-27, 2025",
-            "webinar_time": "7:30 AM - 12:30 PM IST",
-            "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
-            "no_webinar": False
-        }
+        print(f"Error loading Majlis settings from database: {e}")
+    
+    # Default settings
+    default_video_id = "GXRL7PcPbOA"
+    return {
+        "embed_url": f"https://www.youtube.com/embed/{default_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&playsinline=1&loop=1&enablejsapi=1",
+        "youtube_video_id": default_video_id,
+        "webinar_title": "Ashara Mubaraka 1447 - Ratlam Relay (Majlis)",
+        "webinar_description": "Welcome to the live relay of Ashara Mubaraka 1447. This stream is authorized for Majlis members only.",
+        "webinar_date": "August 9-15, 2025",
+        "webinar_time": "7:30 AM - 12:30 PM IST",
+        "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
+        "no_webinar": False
+    }
 
 def extract_youtube_id(url):
     """Extract YouTube video ID from various URL formats"""
@@ -2643,86 +2799,116 @@ def api_status():
         return jsonify({'logged_in': False})
     
     session_token = request.cookies.get('session_token')
-    if not verify_session(session_token):
-        return jsonify({'logged_in': False})
+    session_info = verify_session(session_token)
     
-    sessions = load_sessions()
-    its_id = sessions[session_token]['its_id']
-    login_time = sessions[session_token]['login_time']
+    if not session_info:
+        return jsonify({'logged_in': False})
     
     return jsonify({
         'logged_in': True,
-        'its_id': its_id,
-        'login_time': login_time
+        'user_id': session_info['user_id'],
+        'user_type': session_info['user_type'],
+        'login_time': session_info['login_time']
     })
 
 # Main route for login
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    """Home page / login route"""
+    """Home page / login route - supports both ITS and Majlis users"""
     init_database()
     
     if 'session_token' in request.cookies:
         session_token = request.cookies.get('session_token')
-        if verify_session(session_token):
-            return redirect(url_for('webinar'))
+        session_info = verify_session(session_token)
+        if session_info:
+            # Redirect based on user type
+            if session_info['user_type'] == 'majlis':
+                return redirect(url_for('majlis'))
+            else:
+                return redirect(url_for('webinar'))
     
     if request.method == 'POST':
-        its_id = request.form.get('its_id', '').strip()
+        user_id = request.form.get('its_id', '').strip()  # Field name kept as its_id for backward compatibility
         
-        if not its_id or len(its_id) != 8 or not its_id.isdigit():
-            return render_template_string(LOGIN_TEMPLATE, error="Please enter a valid 8-digit ITS ID.")
+        if not user_id or len(user_id) != 8 or not user_id.isdigit():
+            return render_template_string(LOGIN_TEMPLATE, error="Please enter a valid 8-digit ITS/Majlis ID.")
         
-        its_ids = load_its_ids()
-        if its_id not in its_ids:
-            return render_template_string(LOGIN_TEMPLATE, error="ITS ID not authorized. Please contact the administrator.")
+        # Check ITS ID first
+        if is_its_id_valid(user_id):
+            session_token = create_session(user_id, 'its')
+            if not session_token:
+                return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
+            
+            response = redirect(url_for('webinar'))
+            response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
+            return response
         
-        if is_its_logged_in(its_id):
-            return render_template_string(LOGIN_TEMPLATE, error="This ITS ID is already logged in on another device.")
+        # Check Majlis ID if ITS ID not found
+        elif is_majlis_id_valid(user_id):
+            session_token = create_session(user_id, 'majlis')
+            if not session_token:
+                return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
+            
+            response = redirect(url_for('majlis'))
+            response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
+            return response
         
-        session_token = create_session(its_id)
-        if not session_token:
-            return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
-        
-        response = redirect(url_for('webinar'))
-        response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
-        
-        return response
+        else:
+            return render_template_string(LOGIN_TEMPLATE, error="ID not authorized. Please contact the administrator.")
     
     return render_template_string(LOGIN_TEMPLATE)
 
 @app.route('/webinar')
 def webinar():
-    """Webinar page - requires valid session"""
+    """Webinar page for ITS users - requires valid ITS session"""
     if 'session_token' not in request.cookies:
         return redirect(url_for('index'))
     
     session_token = request.cookies.get('session_token')
-    if not verify_session(session_token):
+    session_info = verify_session(session_token)
+    
+    if not session_info:
         response = redirect(url_for('index'))
         response.delete_cookie('session_token')
         return response
     
-    # Get session from database
-    try:
-        session = ActiveSession.query.get(session_token)
-        if not session:
-            response = redirect(url_for('index'))
-            response.delete_cookie('session_token')
-            return response
-        
-        its_id = session.its_id
-        webinar_data = load_webinar_settings()
-        
-        if webinar_data.get('no_webinar', False):
-            return render_template_string(NO_WEBINAR_TEMPLATE, its_id=its_id, session_token=session_token)
-        else:
-            return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=its_id, session_token=session_token, **webinar_data)
-    except Exception as e:
-        print(f"Error in webinar route: {e}")
+    # Ensure this is an ITS user
+    if session_info.get('user_type') != 'its':
+        return redirect(url_for('index'))
+    
+    user_id = session_info['user_id']
+    webinar_data = load_webinar_settings()
+    
+    if webinar_data.get('no_webinar', False):
+        return render_template_string(NO_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token)
+    else:
+        return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=user_id, session_token=session_token, **webinar_data)
+
+@app.route('/majlis')
+def majlis():
+    """Webinar page for Majlis users - requires valid Majlis session"""
+    if 'session_token' not in request.cookies:
+        return redirect(url_for('index'))
+    
+    session_token = request.cookies.get('session_token')
+    session_info = verify_session(session_token)
+    
+    if not session_info:
         response = redirect(url_for('index'))
         response.delete_cookie('session_token')
         return response
+    
+    # Ensure this is a Majlis user
+    if session_info.get('user_type') != 'majlis':
+        return redirect(url_for('index'))
+    
+    user_id = session_info['user_id']
+    webinar_data = load_majlis_webinar_settings()
+    
+    if webinar_data.get('no_webinar', False):
+        return render_template_string(NO_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token)
+    else:
+        return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=user_id, session_token=session_token, **webinar_data)
 
 @app.route('/logout')
 def logout():
@@ -3576,35 +3762,43 @@ def admin_index():
 @app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
-    """Enhanced admin dashboard route"""
+    """Enhanced admin dashboard route with dual user support"""
     try:
-        # Fetch all ITS IDs from database
-        its_ids_list = ItsID.query.all()
-        its_ids = {its_id.id for its_id in its_ids_list}
+        # Fetch ITS and Majlis IDs from cache
+        its_ids = load_its_ids()
+        majlis_ids = load_majlis_ids()
         
-        # Get active sessions from database
-        active_sessions = ActiveSession.query.all()
+        # Get active sessions from Redis
+        all_sessions = get_all_sessions()
         
-        # Get webinar settings
-        webinar_settings = load_webinar_settings()
+        # Get webinar settings for both types
+        its_settings = load_webinar_settings()
+        majlis_settings = load_majlis_webinar_settings()
         
-        # Get active sessions by ITS ID
-        sessions_status = set()
-        sessions_data = []
-        for session in active_sessions:
-            sessions_status.add(session.its_id)
-            # Format session data for display
-            sessions_data.append({
-                'its_id': session.its_id,
-                'login_time_formatted': session.login_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'session_token': session.token
-            })
+        # Process sessions data
+        its_sessions = []
+        majlis_sessions = []
+        
+        for token, session_data in all_sessions.items():
+            formatted_session = {
+                'user_id': session_data['user_id'],
+                'login_time_formatted': datetime.fromisoformat(session_data['login_time']).strftime('%Y-%m-%d %H:%M:%S'),
+                'session_token': token,
+                'user_type': session_data.get('user_type', 'its')
+            }
+            
+            if session_data.get('user_type') == 'majlis':
+                majlis_sessions.append(formatted_session)
+            else:
+                its_sessions.append(formatted_session)
         
         # Prepare stats
         stats = {
             'total_its': len(its_ids),
-            'active_sessions': len(active_sessions),
-            'total_sessions': len(active_sessions)
+            'total_majlis': len(majlis_ids),
+            'active_its_sessions': len(its_sessions),
+            'active_majlis_sessions': len(majlis_sessions),
+            'total_sessions': len(all_sessions)
         }
         
         message = request.args.get('message', '')
@@ -3613,11 +3807,13 @@ def admin_dashboard():
         return render_template_string(ADMIN_DASHBOARD_TEMPLATE, 
                                   stats=stats,
                                   its_ids=sorted(its_ids),
-                                  sessions_status=sessions_status,
-                                  sessions_data=sessions_data,
+                                  majlis_ids=sorted(majlis_ids),
+                                  its_sessions=its_sessions,
+                                  majlis_sessions=majlis_sessions,
                                   message=message,
                                   message_type=message_type,
-                                  settings=webinar_settings)
+                                  its_settings=its_settings,
+                                  majlis_settings=majlis_settings)
     except Exception as e:
         print(f"Error in admin dashboard: {e}")
         return f"Error loading admin dashboard: {str(e)}"
@@ -3688,48 +3884,23 @@ def admin_delete_its():
         return redirect(url_for('admin_dashboard') + f'?message=Error deleting ITS ID: {str(e)}&type=error')
 
 @app.route('/admin/delete_all_its', methods=['POST'])
+@admin_required
 def admin_delete_all_its():
     """Delete all ITS IDs"""
     try:
-        # Count ITS IDs for message
-        count = ItsID.query.count()
-        
-        if count == 0:
-            return redirect(url_for('admin_dashboard') + '?message=No ITS IDs to delete&type=error')
-            
-        # Delete all active sessions first
-        ActiveSession.query.delete()
-        
-        # Delete all ITS IDs
+        # Delete from database
         ItsID.query.delete()
-        
         db.session.commit()
         
-        return redirect(url_for('admin_dashboard') + f'?message=Deleted {count} ITS IDs successfully&type=success')
+        # Clear Redis cache
+        redis_client.delete('cached:its_ids')
+        
+        return redirect(url_for('admin_dashboard') + '?message=All ITS IDs deleted successfully&type=success')
     except Exception as e:
         db.session.rollback()
         print(f"Error deleting all ITS IDs: {e}")
-        return redirect(url_for('admin_dashboard') + f'?message=Error deleting ITS IDs: {str(e)}&type=error')
+        return redirect(url_for('admin_dashboard') + f'?message=Error deleting all ITS IDs: {str(e)}&type=error')
 
-@app.route('/admin/clear_sessions', methods=['POST'])
-def admin_clear_sessions():
-    """Clear all active sessions"""
-    try:
-        # Count sessions for message
-        count = ActiveSession.query.count()
-        
-        if count == 0:
-            return redirect(url_for('admin_dashboard') + '?message=No active sessions to clear&type=error')
-        
-        # Delete all sessions
-        ActiveSession.query.delete()
-        db.session.commit()
-        
-        return redirect(url_for('admin_dashboard') + f'?message=Cleared {count} active sessions successfully&type=success')
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error clearing sessions: {e}")
-        return redirect(url_for('admin_dashboard') + f'?message=Error clearing sessions: {str(e)}&type=error')
 
 @app.route('/admin/kick_session', methods=['POST'])
 def admin_kick_session():
@@ -3739,24 +3910,148 @@ def admin_kick_session():
     if not session_token:
         return redirect(url_for('admin_dashboard') + '?message=Invalid session token&type=error')
     
+    if kick_session(session_token):
+        return redirect(url_for('admin_dashboard') + '?message=Session kicked successfully&type=success')
+    else:
+        return redirect(url_for('admin_dashboard') + '?message=Error kicking session&type=error')
+
+# Majlis Admin Routes
+@app.route('/admin/add_majlis', methods=['POST'])
+@admin_required
+def admin_add_majlis():
+    """Add a new Majlis ID"""
+    majlis_id = request.form.get('majlis_id', '').strip()
+    
+    if not majlis_id or len(majlis_id) != 8 or not majlis_id.isdigit():
+        return redirect(url_for('admin_dashboard') + '?message=Please enter a valid 8-digit Majlis ID&type=error')
+    
+    if save_majlis_id(majlis_id):
+        return redirect(url_for('admin_dashboard') + f'?message=Majlis ID {majlis_id} added successfully&type=success')
+    else:
+        return redirect(url_for('admin_dashboard') + f'?message=Error adding Majlis ID {majlis_id}&type=error')
+
+@app.route('/admin/delete_majlis', methods=['POST'])
+@admin_required  
+def admin_delete_majlis():
+    """Delete a Majlis ID"""
+    majlis_id = request.form.get('majlis_id', '').strip()
+    
+    if not majlis_id:
+        return redirect(url_for('admin_dashboard') + '?message=Invalid Majlis ID&type=error')
+    
+    if delete_majlis_id(majlis_id):
+        return redirect(url_for('admin_dashboard') + f'?message=Majlis ID {majlis_id} deleted successfully&type=success')
+    else:
+        return redirect(url_for('admin_dashboard') + f'?message=Error deleting Majlis ID {majlis_id}&type=error')
+
+@app.route('/admin/add_bulk_majlis', methods=['POST'])
+@admin_required
+def admin_add_bulk_majlis():
+    """Add multiple Majlis IDs"""
+    bulk_majlis_ids = request.form.get('bulk_majlis_ids', '').strip()
+    
+    if not bulk_majlis_ids:
+        return redirect(url_for('admin_dashboard') + '?message=Please enter Majlis IDs&type=error')
+    
+    # Parse IDs (comma, space, or newline separated)
+    import re
+    majlis_ids = re.split(r'[,\s\n]+', bulk_majlis_ids)
+    majlis_ids = [mid.strip() for mid in majlis_ids if mid.strip()]
+    
+    success_count = 0
+    error_count = 0
+    
+    for majlis_id in majlis_ids:
+        if len(majlis_id) == 8 and majlis_id.isdigit():
+            if save_majlis_id(majlis_id):
+                success_count += 1
+            else:
+                error_count += 1
+        else:
+            error_count += 1
+    
+    message = f'Added {success_count} Majlis IDs successfully'
+    if error_count > 0:
+        message += f', {error_count} failed'
+    
+    return redirect(url_for('admin_dashboard') + f'?message={message}&type=success')
+
+@app.route('/admin/delete_all_majlis', methods=['POST'])
+@admin_required
+def admin_delete_all_majlis():
+    """Delete all Majlis IDs"""
     try:
-        # Find session by token
-        session = ActiveSession.query.get(session_token)
-        
-        if not session:
-            return redirect(url_for('admin_dashboard') + '?message=Session not found&type=error')
-        
-        its_id = session.its_id
-        
-        # Delete the session
-        db.session.delete(session)
+        # Delete from database
+        MajlisID.query.delete()
         db.session.commit()
         
-        return redirect(url_for('admin_dashboard') + f'?message=Kicked user {its_id} successfully&type=success')
+        # Clear Redis cache
+        redis_client.delete('cached:majlis_ids')
+        
+        return redirect(url_for('admin_dashboard') + '?message=All Majlis IDs deleted successfully&type=success')
     except Exception as e:
         db.session.rollback()
-        print(f"Error kicking session: {e}")
-        return redirect(url_for('admin_dashboard') + f'?message=Error kicking session: {str(e)}&type=error')
+        print(f"Error deleting all Majlis IDs: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error deleting all Majlis IDs: {str(e)}&type=error')
+
+@app.route('/admin/update_majlis_settings', methods=['POST'])
+@admin_required
+def admin_update_majlis_settings():
+    """Update Majlis webinar settings"""
+    try:
+        youtube_video_id = request.form.get('majlis_youtube_video_id', '').strip()
+        webinar_title = request.form.get('majlis_webinar_title', '').strip()
+        webinar_description = request.form.get('majlis_webinar_description', '').strip()
+        webinar_date = request.form.get('majlis_webinar_date', '').strip()
+        webinar_time = request.form.get('majlis_webinar_time', '').strip()
+        webinar_speaker = request.form.get('majlis_webinar_speaker', '').strip()
+        no_webinar = 'majlis_no_webinar' in request.form
+        
+        # Get existing settings or create new ones
+        settings = MajlisWebinarSetting.query.first()
+        if not settings:
+            settings = MajlisWebinarSetting()
+            db.session.add(settings)
+        
+        # Update settings
+        settings.youtube_video_id = youtube_video_id
+        settings.webinar_title = webinar_title
+        settings.webinar_description = webinar_description
+        settings.webinar_date = webinar_date
+        settings.webinar_time = webinar_time
+        settings.webinar_speaker = webinar_speaker
+        settings.no_webinar = no_webinar
+        
+        db.session.commit()
+        
+        # Update Redis cache
+        refresh_redis_cache()
+        
+        return redirect(url_for('admin_dashboard') + '?message=Majlis webinar settings updated successfully&type=success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating Majlis webinar settings: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error updating Majlis settings: {str(e)}&type=error')
+
+@app.route('/admin/clear_sessions', methods=['POST'])
+@admin_required
+def admin_clear_sessions():
+    """Clear all active sessions"""
+    if clear_all_sessions():
+        return redirect(url_for('admin_dashboard') + '?message=All sessions cleared successfully&type=success')
+    else:
+        return redirect(url_for('admin_dashboard') + '?message=Error clearing sessions&type=error')
+
+@app.route('/admin/refresh_cache', methods=['POST'])
+@admin_required
+def admin_refresh_cache():
+    """Manually refresh Redis cache"""
+    try:
+        refresh_redis_cache()
+        return redirect(url_for('admin_dashboard') + '?message=Cache refreshed successfully&type=success')
+    except Exception as e:
+        print(f"Error refreshing cache: {e}")
+        return redirect(url_for('admin_dashboard') + f'?message=Error refreshing cache: {str(e)}&type=error')
 
 
 if __name__ == '__main__':
