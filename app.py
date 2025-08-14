@@ -81,6 +81,8 @@ class WebinarSetting(db.Model):
     webinar_date = db.Column(db.String(100), nullable=True)
     webinar_time = db.Column(db.String(100), nullable=True)
     webinar_speaker = db.Column(db.String(200), nullable=True)
+    start_time = db.Column(db.DateTime, nullable=True)  # Dynamic start time
+    end_time = db.Column(db.DateTime, nullable=True)    # Dynamic end time
     no_webinar = db.Column(db.Boolean, default=False)
     
     def __repr__(self):
@@ -100,6 +102,8 @@ class MajlisWebinarSetting(db.Model):
     webinar_date = db.Column(db.String(100), nullable=True)
     webinar_time = db.Column(db.String(100), nullable=True)
     webinar_speaker = db.Column(db.String(200), nullable=True)
+    start_time = db.Column(db.DateTime, nullable=True)  # Dynamic start time
+    end_time = db.Column(db.DateTime, nullable=True)    # Dynamic end time
     no_webinar = db.Column(db.Boolean, default=False)
     
     def __repr__(self):
@@ -183,6 +187,8 @@ def refresh_redis_cache():
                 "webinar_date": its_settings.webinar_date,
                 "webinar_time": its_settings.webinar_time,
                 "webinar_speaker": its_settings.webinar_speaker,
+                "start_time": its_settings.start_time.isoformat() if its_settings.start_time else None,
+                "end_time": its_settings.end_time.isoformat() if its_settings.end_time else None,
                 "no_webinar": its_settings.no_webinar
             }
             redis_client.set('cached:webinar_settings', json.dumps(settings_dict))
@@ -198,6 +204,8 @@ def refresh_redis_cache():
                 "webinar_date": majlis_settings.webinar_date,
                 "webinar_time": majlis_settings.webinar_time,
                 "webinar_speaker": majlis_settings.webinar_speaker,
+                "start_time": majlis_settings.start_time.isoformat() if majlis_settings.start_time else None,
+                "end_time": majlis_settings.end_time.isoformat() if majlis_settings.end_time else None,
                 "no_webinar": majlis_settings.no_webinar
             }
             redis_client.set('cached:majlis_settings', json.dumps(majlis_settings_dict))
@@ -470,6 +478,8 @@ def _load_its_settings_from_db():
                 "webinar_date": settings.webinar_date,
                 "webinar_time": settings.webinar_time,
                 "webinar_speaker": settings.webinar_speaker,
+                "start_time": settings.start_time.isoformat() if settings.start_time else None,
+                "end_time": settings.end_time.isoformat() if settings.end_time else None,
                 "no_webinar": settings.no_webinar
             }
     except Exception as e:
@@ -501,6 +511,8 @@ def _load_majlis_settings_from_db():
                 "webinar_date": settings.webinar_date,
                 "webinar_time": settings.webinar_time,
                 "webinar_speaker": settings.webinar_speaker,
+                "start_time": settings.start_time.isoformat() if settings.start_time else None,
+                "end_time": settings.end_time.isoformat() if settings.end_time else None,
                 "no_webinar": settings.no_webinar
             }
     except Exception as e:
@@ -518,6 +530,65 @@ def _load_majlis_settings_from_db():
         "webinar_speaker": "His Holiness Dr. Syedna Mufaddal Saifuddin (TUS)",
         "no_webinar": False
     }
+
+def is_webinar_time_active(webinar_data):
+    """Check if the current time is within the webinar's start and end time"""
+    try:
+        current_time = datetime.now()
+        
+        # Get start and end times from webinar data
+        start_time_str = webinar_data.get('start_time')
+        end_time_str = webinar_data.get('end_time')
+        
+        # If no start/end times are set, webinar is always active (unless no_webinar is True)
+        if not start_time_str or not end_time_str:
+            return not webinar_data.get('no_webinar', False)
+        
+        # Parse the ISO format datetime strings
+        start_time = datetime.fromisoformat(start_time_str)
+        end_time = datetime.fromisoformat(end_time_str)
+        
+        # Check if current time is within the range
+        if start_time <= current_time <= end_time:
+            return not webinar_data.get('no_webinar', False)
+        else:
+            # Outside of time range, should show no webinar
+            return False
+            
+    except Exception as e:
+        print(f"Error checking webinar time: {e}")
+        # Fallback to checking no_webinar flag only
+        return not webinar_data.get('no_webinar', False)
+
+def load_webinar_settings_with_time_check():
+    """Load ITS webinar settings and automatically check time-based availability"""
+    try:
+        webinar_data = load_webinar_settings()
+        
+        # Check if webinar should be active based on time
+        if not is_webinar_time_active(webinar_data):
+            # Force no_webinar if outside time range
+            webinar_data['no_webinar'] = True
+            
+        return webinar_data
+    except Exception as e:
+        print(f"Error loading ITS webinar settings with time check: {e}")
+        return {"no_webinar": True}
+
+def load_majlis_webinar_settings_with_time_check():
+    """Load Majlis webinar settings and automatically check time-based availability"""
+    try:
+        webinar_data = load_majlis_webinar_settings()
+        
+        # Check if webinar should be active based on time
+        if not is_webinar_time_active(webinar_data):
+            # Force no_webinar if outside time range
+            webinar_data['no_webinar'] = True
+            
+        return webinar_data
+    except Exception as e:
+        print(f"Error loading Majlis webinar settings with time check: {e}")
+        return {"no_webinar": True}
 
 def extract_youtube_id(url):
     """Extract YouTube video ID from various URL formats"""
@@ -2005,21 +2076,29 @@ WEBINAR_TEMPLATE_IMPROVED = '''
     </header>
 
     <div class="container" id="container">
+        {% if webinar_speaker or webinar_date or webinar_time %}
         <div class="webinar-info" id="webinarInfo">
             <div class="badge">
                 <div class="badge-icon"></div>
                 <span>Exclusive Access</span>
             </div>
             <h1 class="webinar-title">{{ webinar_title }}</h1>
+            {% if webinar_description %}
             <p class="webinar-subtitle">{{ webinar_description }}</p>
+            {% endif %}
+            {% if webinar_speaker %}
             <div class="speaker-info">
                 <div class="speaker-avatar">{{ webinar_speaker[:2] }}</div>
                 <div class="speaker-details">
                     <div class="speaker-name">{{ webinar_speaker }}</div>
+                    {% if webinar_date and webinar_time %}
                     <div class="speaker-title">{{ webinar_date }} • {{ webinar_time }}</div>
+                    {% endif %}
                 </div>
             </div>
+            {% endif %}
         </div>
+        {% endif %}
 
         <div class="video-container" id="videoContainer">
             <div class="video-wrapper">
@@ -2477,7 +2556,7 @@ WEBINAR_TEMPLATE_IMPROVED = '''
 </html>
 '''
 
-# Majlis Webinar Template (without play/pause controls)
+# Majlis Webinar Template (same as ITS but without play/pause controls)
 MAJLIS_WEBINAR_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
@@ -2530,6 +2609,11 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             --radius-lg: 16px;
             --radius-xl: 20px;
             --radius-full: 50px;
+            
+            /* Transitions */
+            --transition-fast: 0.2s ease;
+            --transition-normal: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --transition-slow: 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
         * {
@@ -2556,12 +2640,7 @@ MAJLIS_WEBINAR_TEMPLATE = '''
         }
 
         .header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            background: rgba(9, 13, 27, 0.92);
+            background: rgba(9, 13, 27, 0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             padding: 1rem 1.5rem;
@@ -2569,8 +2648,11 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             justify-content: space-between;
             align-items: center;
             border-bottom: 2px solid rgba(212, 175, 55, 0.2);
-            box-shadow: var(--shadow-md);
-            transition: all 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            min-height: 70px;
         }
 
         .logo-wrapper {
@@ -2579,7 +2661,7 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             gap: 0.75rem;
         }
 
-        .logo {
+        .logo-icon {
             width: 45px;
             height: 45px;
             border-radius: var(--radius-md);
@@ -2588,25 +2670,26 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             align-items: center;
             justify-content: center;
             font-weight: 800;
-            font-size: 1.2rem;
             color: white;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.4rem;
             text-transform: uppercase;
             letter-spacing: 1px;
             box-shadow: var(--shadow-brand);
             position: relative;
             overflow: hidden;
+            flex-shrink: 0;
         }
 
-        .logo::before {
-            content: "";
+        .logo-icon::after {
+            content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transform: rotate(45deg);
-            animation: logoShine 3s infinite;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
+            z-index: 0;
         }
 
         .logo-text {
@@ -2614,25 +2697,28 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             flex-direction: column;
         }
 
-        .logo-main {
-            font-family: 'Montserrat', sans-serif;
+        .logo-title {
+            font-size: 1.25rem;
             font-weight: 700;
-            font-size: 1.1rem;
             color: var(--text-primary);
-            line-height: 1.2;
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+            line-height: 1.1;
         }
 
-        .logo-sub {
-            font-size: 0.75rem;
+        .logo-subtitle {
+            font-size: 0.8rem;
             color: var(--accent-gold);
             font-weight: 500;
-            opacity: 0.9;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
 
         .user-info {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 1rem;
             flex-shrink: 0;
         }
 
@@ -2640,31 +2726,31 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             background: var(--gradient-gold);
             color: var(--bg-dark);
             padding: 0.6rem 1.2rem;
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-full);
             font-weight: 600;
             font-size: 0.9rem;
             box-shadow: var(--shadow-gold);
             letter-spacing: 0.5px;
+            color: var(--accent-gold);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            white-space: nowrap;
         }
 
         .logout-btn {
             background: var(--surface-2);
             color: var(--text-primary);
-            border: 1px solid rgba(212, 175, 55, 0.2);
-            padding: 0.6rem 1rem;
-            border-radius: var(--radius-md);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-full);
             text-decoration: none;
             font-size: 0.85rem;
             font-weight: 500;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            transition: var(--transition-normal);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
         }
 
         .logout-btn:hover {
-            background: rgba(212, 175, 55, 0.1);
-            border-color: var(--accent-gold);
+            background: var(--surface-3);
             transform: translateY(-1px);
         }
         
@@ -2678,23 +2764,24 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             position: absolute;
             right: 0;
             top: calc(100% + 5px);
+            min-width: 220px;
             background: var(--bg-surface);
             border: 1px solid rgba(212, 175, 55, 0.2);
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-lg);
             box-shadow: var(--shadow-lg);
-            min-width: 200px;
             z-index: 1001;
         }
         
         .dropdown-content a {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1rem;
+            gap: 0.75rem;
+            padding: 0.875rem 1.25rem;
             color: var(--text-primary);
             text-decoration: none;
             font-size: 0.85rem;
-            transition: all 0.2s ease;
+            font-weight: 500;
+            transition: var(--transition-fast);
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
         
@@ -2703,25 +2790,52 @@ MAJLIS_WEBINAR_TEMPLATE = '''
         }
         
         .dropdown-content a:hover {
-            background: rgba(212, 175, 55, 0.1);
+            background: var(--gold-overlay);
             color: var(--accent-gold);
         }
 
-        .main-content {
+        .container {
             flex: 1;
-            padding-top: 80px;
+            padding: 2rem;
             display: flex;
             flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: calc(100vh - 70px);
         }
 
         .webinar-info {
             background: var(--gradient-surface);
-            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
-            padding: 1.5rem 2rem;
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
             text-align: center;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+            max-width: 800px;
+            width: 100%;
         }
 
-        .badge {
+        .webinar-info::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--gradient-glass);
+            border-radius: var(--radius-xl);
+            z-index: 0;
+        }
+
+        .webinar-info > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .status-badge {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
@@ -2733,17 +2847,31 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             border: 1px solid rgba(212, 175, 55, 0.2);
         }
 
         .webinar-title {
             font-family: 'Montserrat', sans-serif;
-            font-size: 1.6rem;
+            font-size: 2.2rem;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
             line-height: 1.3;
+            background: linear-gradient(135deg, var(--text-primary), var(--accent-gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .webinar-description {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .webinar-meta {
@@ -2752,7 +2880,7 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             align-items: center;
             gap: 2rem;
             flex-wrap: wrap;
-            margin-top: 1rem;
+            margin-top: 1.5rem;
         }
 
         .speaker-info {
@@ -2760,15 +2888,9 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             align-items: center;
             gap: 1rem;
             background: var(--surface-1);
-            padding: 0.75rem 1.5rem;
+            padding: 1rem 1.5rem;
             border-radius: var(--radius-lg);
             border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .schedule-info {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            font-weight: 500;
         }
 
         .speaker-avatar {
@@ -2797,6 +2919,12 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             font-weight: 500;
         }
 
+        .schedule-info {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
         .video-section {
             flex: 1;
             position: relative;
@@ -2811,11 +2939,34 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             height: 100%;
             position: relative;
             max-width: 100%;
-            max-height: calc(100vh - 200px);
+            max-height: calc(100vh - 280px);
             aspect-ratio: 16/9;
             background: #000;
-            border-radius: 0;
+            border-radius: var(--radius-lg);
             overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            z-index: 5;
+            border-radius: var(--radius-lg);
+        }
+
+        .youtube-brand-blocker {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 100px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 6;
+            border-radius: var(--radius-lg);
         }
 
         .video-frame {
@@ -2823,6 +2974,7 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             height: 100%;
             border: none;
             background: #000;
+            border-radius: var(--radius-lg);
         }
 
         .loading-overlay {
@@ -2839,6 +2991,7 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             gap: 1.5rem;
             z-index: 10;
             transition: opacity 0.5s ease;
+            border-radius: var(--radius-lg);
         }
 
         .spinner {
@@ -2854,26 +3007,6 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             color: var(--text-secondary);
             font-size: 1rem;
             font-weight: 500;
-        }
-
-        /* Fullscreen styles */
-        .video-container.fullscreen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 9999;
-            background: #000;
-        }
-
-        .video-container.fullscreen .main-content {
-            padding-top: 0;
-        }
-
-        .video-container.fullscreen .video-frame-container {
-            max-height: 100vh;
-            border-radius: 0;
         }
 
         /* Control group positioning */
@@ -2922,67 +3055,24 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             transform: scale(1.05);
         }
 
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .header {
-                padding: 0.75rem 1rem;
-            }
-            
-            .logo {
-                width: 40px;
-                height: 40px;
-                font-size: 1rem;
-            }
-            
-            .logo-main {
-                font-size: 1rem;
-            }
-            
-            .webinar-info {
-                padding: 1rem;
-            }
-            
-            .webinar-title {
-                font-size: 1.3rem;
-            }
-            
-            .webinar-meta {
-                flex-direction: column;
-                gap: 1rem;
-            }
-            
-            .user-id, .logout-btn {
-                font-size: 0.8rem;
-                padding: 0.5rem 0.8rem;
-            }
+        /* Fullscreen styles */
+        .video-container.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background: #000;
         }
 
-        @media (max-width: 480px) {
-            .header {
-                padding: 0.5rem 0.75rem;
-            }
-            
-            .logo-text {
-                display: none;
-            }
-            
-            .webinar-title {
-                font-size: 1.1rem;
-            }
-            
-            .speaker-info {
-                flex-direction: column;
-                text-align: center;
-                gap: 0.5rem;
-            }
-            
-            .webinar-info {
-                display: none;
-            }
+        .video-container.fullscreen .video-frame-container {
+            max-height: 100vh;
+            border-radius: 0;
+        }
 
-            .video-frame-container {
-                max-height: 100vh;
-            }
+        .video-container.fullscreen .container {
+            padding: 0;
         }
 
         /* Animations */
@@ -3001,18 +3091,196 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             50% { transform: scale(1.1); }
         }
 
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        ::-webkit-scrollbar-track {
-            background: var(--bg-surface);
+        .webinar-info {
+            animation: fadeIn 0.8s ease-out;
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: var(--accent-gold);
-            border-radius: var(--radius-sm);
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .header {
+                padding: 0.75rem 1rem;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .logo-wrapper {
+                gap: 0.5rem;
+            }
+
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.4rem;
+            }
+
+            .logo-title {
+                font-size: 1.1rem;
+            }
+
+            .logo-subtitle {
+                font-size: 0.7rem;
+            }
+
+            .user-info {
+                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
+
+            .user-id, .logout-btn {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.6rem;
+            }
+
+            .container {
+                padding: 1rem 0.75rem;
+            }
+
+            .webinar-info {
+                padding: 0.75rem;
+            }
+
+            .webinar-title {
+                font-size: 1.8rem;
+            }
+
+            .video-frame-container {
+                max-height: calc(100vh - 320px);
+            }
+
+            .webinar-meta {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .speaker-info {
+                padding: 0.75rem 1rem;
+                gap: 0.75rem;
+            }
+
+            .speaker-avatar {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2rem;
+            }
+
+            .control-section {
+                padding: 0.5rem 0.75rem;
+                gap: 8px;
+            }
+
+            .control-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            .dropdown-content {
+                min-width: 180px;
+            }
+
+            .dropdown-content a {
+                padding: 0.75rem 1rem;
+                font-size: 0.8rem;
+                gap: 0.5rem;
+            }
+
+            .dropdown-content a i {
+                margin-left: 6px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                flex-direction: column;
+                padding: 0.75rem 1rem 1rem;
+                gap: 0.75rem;
+            }
+
+            .user-info {
+                order: -1;
+                width: 100%;
+                justify-content: center;
+            }
+
+            .logo-title {
+                font-size: 1rem;
+            }
+
+            .logo-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 1.2rem;
+            }
+
+            .speaker-info {
+                padding: 0.75rem;
+                gap: 0.5rem;
+            }
+
+            .webinar-title {
+                font-size: 1.5rem;
+            }
+
+            .webinar-description {
+                font-size: 1rem;
+            }
+
+            .container {
+                padding: 1rem 0.5rem;
+            }
+
+            .webinar-info {
+                padding: 1.5rem 1rem;
+            }
+
+            .video-frame-container {
+                max-height: calc(100vh - 280px);
+            }
+
+            .control-group {
+                bottom: 15px;
+                left: 15px;
+                right: 15px;
+            }
+        }
+
+        /* Landscape mode for mobile */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .header {
+                padding: 0.5rem 1rem;
+            }
+
+            .container {
+                padding: 0.5rem;
+            }
+
+            .webinar-info {
+                display: none;
+            }
+
+            .video-frame-container {
+                max-height: calc(100vh - 70px);
+                border-radius: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .video-container.fullscreen .control-group {
+                bottom: 15px;
+                left: 15px;
+                right: 15px;
+            }
+        }
+
+        /* Hide scrollbars in fullscreen */
+        .video-container.fullscreen {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
 
         .video-container.fullscreen::-webkit-scrollbar {
@@ -3024,10 +3292,12 @@ MAJLIS_WEBINAR_TEMPLATE = '''
     <div class="video-container" id="videoContainer">
         <header class="header" id="header">
             <div class="logo-wrapper">
-                <div class="logo">AH</div>
+                <div class="logo-icon">
+                    <img src="https://i.ibb.co/nqfBrMmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
+                </div>
                 <div class="logo-text">
-                    <div class="logo-main">Anjuman e Hakimi</div>
-                    <div class="logo-sub">Najmi Mohallah Ratlam</div>
+                    <div class="logo-title">Anjuman e Hakimi</div>
+                    <div class="logo-subtitle">Najmi Mohallah Ratlam Live Portal</div>
                 </div>
             </div>
             <div class="user-info">
@@ -3042,14 +3312,19 @@ MAJLIS_WEBINAR_TEMPLATE = '''
             </div>
         </header>
 
-        <div class="main-content">
+        <div class="container">
+            {% if webinar_speaker or webinar_date or webinar_time %}
             <div class="webinar-info" id="webinarInfo">
-                <div class="badge">
+                <div class="status-badge">
                     <i class="fas fa-video"></i>
                     Live Stream - Majlis
                 </div>
                 <h1 class="webinar-title">{{ webinar_title }}</h1>
+                {% if webinar_description %}
+                <p class="webinar-description">{{ webinar_description }}</p>
+                {% endif %}
                 <div class="webinar-meta">
+                    {% if webinar_speaker %}
                     <div class="speaker-info">
                         <div class="speaker-avatar">
                             <i class="fas fa-microphone"></i>
@@ -3059,11 +3334,15 @@ MAJLIS_WEBINAR_TEMPLATE = '''
                             <span>Live Now</span>
                         </div>
                     </div>
+                    {% endif %}
+                    {% if webinar_date and webinar_time %}
                     <div class="schedule-info">
                         <i class="fas fa-calendar"></i> {{ webinar_date }} at {{ webinar_time }}
                     </div>
+                    {% endif %}
                 </div>
             </div>
+            {% endif %}
 
             <div class="video-section">
                 <div class="video-frame-container">
@@ -3079,6 +3358,8 @@ MAJLIS_WEBINAR_TEMPLATE = '''
                         allowfullscreen
                         playsinline>
                     </iframe>
+                    <div class="video-overlay"></div>
+                    <div class="youtube-brand-blocker"></div>
                     <div class="control-group">
                         <div class="control-section">
                             <button class="control-btn" id="volumeButton" title="Toggle Volume">
@@ -3198,7 +3479,7 @@ MAJLIS_WEBINAR_TEMPLATE = '''
                     if (fullscreenIcon) fullscreenIcon.className = 'fas fa-compress';
                     if (fullscreenButton) fullscreenButton.title = 'Exit Fullscreen';
                     if (header) header.style.display = 'none';
-                    if (webinarInfo) webinarInfo.style.display = 'none';
+                    if (webinarInfo && webinarInfo) webinarInfo.style.display = 'none';
                 } else {
                     // Exited fullscreen
                     isFullscreen = false;
@@ -3206,7 +3487,7 @@ MAJLIS_WEBINAR_TEMPLATE = '''
                     if (fullscreenIcon) fullscreenIcon.className = 'fas fa-expand';
                     if (fullscreenButton) fullscreenButton.title = 'Enter Fullscreen';
                     if (header) header.style.display = 'flex';
-                    if (webinarInfo) webinarInfo.style.display = 'block';
+                    if (webinarInfo && webinarInfo) webinarInfo.style.display = 'block';
                 }
             }
 
@@ -3381,8 +3662,8 @@ NO_WEBINAR_TEMPLATE = '''
         }
 
         .logo-icon {
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             border-radius: var(--radius-md);
             background: var(--gradient-brand);
             display: flex;
@@ -3391,22 +3672,36 @@ NO_WEBINAR_TEMPLATE = '''
             font-weight: 800;
             color: white;
             font-family: 'Montserrat', sans-serif;
-            font-size: 1.8rem;
+            font-size: 1.2rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            flex-shrink: 0;
         }
 
-        .logo-text h1 {
-            font-size: 1.5rem;
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-title {
+            font-size: 1.1rem;
             font-weight: 700;
             color: var(--text-primary);
             font-family: 'Montserrat', sans-serif;
+            line-height: 1.2;
         }
 
-        .logo-text p {
-            font-size: 0.9rem;
+        .logo-subtitle {
+            font-size: 0.75rem;
             color: var(--accent-gold);
             font-weight: 500;
-            text-transform: uppercase;
+            opacity: 0.9;
         }
 
         .user-info {
@@ -3491,6 +3786,24 @@ NO_WEBINAR_TEMPLATE = '''
                 gap: 1rem;
             }
 
+            .logo-container {
+                gap: 0.75rem;
+            }
+
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+
+            .logo-title {
+                font-size: 1rem;
+            }
+
+            .logo-subtitle {
+                font-size: 0.7rem;
+            }
+
             .main-content {
                 padding: 2rem 1rem;
             }
@@ -3507,6 +3820,38 @@ NO_WEBINAR_TEMPLATE = '''
                 font-size: 1rem;
             }
         }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 1rem 0.75rem;
+            }
+
+            .logo-container {
+                gap: 0.5rem;
+            }
+
+            .logo-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 0.9rem;
+            }
+
+            .logo-title {
+                font-size: 0.9rem;
+            }
+
+            .logo-subtitle {
+                font-size: 0.65rem;
+            }
+
+            .no-webinar-title {
+                font-size: 1.5rem;
+            }
+
+            .no-webinar-description {
+                font-size: 0.9rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -3518,8 +3863,8 @@ NO_WEBINAR_TEMPLATE = '''
                 <img src="https://i.ibb.co/nqfBrMmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
             </div>
             <div class="logo-text">
-                <h1>Anjuman e Hakimi</h1>
-                <p>Najmi Mohallah Ratlam</p>
+                <div class="logo-title">Anjuman e Hakimi</div>
+                <div class="logo-subtitle">Najmi Mohallah Ratlam</div>
             </div>
         </div>
         <div class="user-info">
@@ -3791,7 +4136,7 @@ def webinar():
         return redirect(url_for('index'))
     
     user_id = session_info['user_id']
-    webinar_data = load_webinar_settings()
+    webinar_data = load_webinar_settings_with_time_check()
     
     if webinar_data.get('no_webinar', False):
         return render_template_string(NO_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token)
@@ -3817,7 +4162,7 @@ def majlis():
         return redirect(url_for('index'))
     
     user_id = session_info['user_id']
-    webinar_data = load_majlis_webinar_settings()
+    webinar_data = load_majlis_webinar_settings_with_time_check()
     
     if webinar_data.get('no_webinar', False):
         return render_template_string(NO_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token)
