@@ -2477,6 +2477,833 @@ WEBINAR_TEMPLATE_IMPROVED = '''
 </html>
 '''
 
+# Majlis Webinar Template (without play/pause controls)
+MAJLIS_WEBINAR_TEMPLATE = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>{{ webinar_title }} - Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            /* Premium color system */
+            --brand-primary: #0a3da0;
+            --brand-primary-light: #1c54c5;
+            --brand-primary-dark: #082c71;
+            --brand-secondary: #a08c3a;
+            --accent-gold: #d4af37;
+            --accent-gold-light: #f0cc50;
+            --accent-gold-dark: #b39128;
+            --bg-dark: #090d1b;
+            --bg-surface: #0f1428;
+            --bg-surface-light: #1a233f;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.85);
+            --text-tertiary: rgba(255, 255, 255, 0.65);
+            --surface-1: rgba(255, 255, 255, 0.04);
+            --surface-2: rgba(255, 255, 255, 0.07);
+            --surface-3: rgba(255, 255, 255, 0.12);
+            --gold-overlay: rgba(212, 175, 55, 0.08);
+            
+            /* Gradients */
+            --gradient-brand: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-light));
+            --gradient-gold: linear-gradient(135deg, var(--accent-gold), var(--brand-secondary));
+            --gradient-surface: linear-gradient(120deg, var(--bg-surface), rgba(23, 32, 62, 0.85));
+            --gradient-glass: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+            --gradient-dark: linear-gradient(145deg, var(--bg-surface), var(--bg-dark));
+            
+            /* Shadows */
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 16px 50px rgba(0, 0, 0, 0.3);
+            --shadow-brand: 0 8px 30px rgba(10, 61, 160, 0.3);
+            --shadow-gold: 0 6px 25px rgba(212, 175, 55, 0.15);
+            
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-full: 50px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .video-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            background: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(9, 13, 27, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(212, 175, 55, 0.2);
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+
+        .logo-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo {
+            width: 45px;
+            height: 45px;
+            border-radius: var(--radius-md);
+            background: var(--gradient-brand);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: var(--shadow-brand);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: logoShine 3s infinite;
+        }
+
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-main {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .logo-sub {
+            font-size: 0.75rem;
+            color: var(--accent-gold);
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .user-id {
+            background: var(--gradient-gold);
+            color: var(--bg-dark);
+            padding: 0.6rem 1.2rem;
+            border-radius: var(--radius-lg);
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: var(--shadow-gold);
+            letter-spacing: 0.5px;
+        }
+
+        .logout-btn {
+            background: var(--surface-2);
+            color: var(--text-primary);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 0.6rem 1rem;
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: rgba(212, 175, 55, 0.1);
+            border-color: var(--accent-gold);
+            transform: translateY(-1px);
+        }
+        
+        .logout-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 5px);
+            background: var(--bg-surface);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            min-width: 200px;
+            z-index: 1001;
+        }
+        
+        .dropdown-content a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .dropdown-content a:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-content a:hover {
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--accent-gold);
+        }
+
+        .main-content {
+            flex: 1;
+            padding-top: 80px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .webinar-info {
+            background: var(--gradient-surface);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+            padding: 1.5rem 2rem;
+            text-align: center;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--gold-overlay);
+            color: var(--accent-gold);
+            padding: 0.5rem 1.25rem;
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .webinar-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+            line-height: 1.3;
+        }
+
+        .webinar-meta {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .speaker-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--surface-1);
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .schedule-info {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .speaker-avatar {
+            width: 50px;
+            height: 50px;
+            background: var(--gradient-brand);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: white;
+            font-weight: 700;
+        }
+
+        .speaker-details h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .speaker-details span {
+            font-size: 0.85rem;
+            color: var(--accent-gold);
+            font-weight: 500;
+        }
+
+        .video-section {
+            flex: 1;
+            position: relative;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-frame-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            max-width: 100%;
+            max-height: calc(100vh - 200px);
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 0;
+            overflow: hidden;
+        }
+
+        .video-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1.5rem;
+            z-index: 10;
+            transition: opacity 0.5s ease;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(212, 175, 55, 0.2);
+            border-top: 3px solid var(--accent-gold);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        /* Fullscreen styles */
+        .video-container.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background: #000;
+        }
+
+        .video-container.fullscreen .main-content {
+            padding-top: 0;
+        }
+
+        .video-container.fullscreen .video-frame-container {
+            max-height: 100vh;
+            border-radius: 0;
+        }
+
+        /* Control group positioning */
+        .control-group {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        .control-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(9, 13, 27, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-lg);
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: auto;
+        }
+
+        .control-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: rgba(212, 175, 55, 0.2);
+            color: var(--accent-gold);
+            transform: scale(1.05);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .header {
+                padding: 0.75rem 1rem;
+            }
+            
+            .logo {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+            
+            .logo-main {
+                font-size: 1rem;
+            }
+            
+            .webinar-info {
+                padding: 1rem;
+            }
+            
+            .webinar-title {
+                font-size: 1.3rem;
+            }
+            
+            .webinar-meta {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .user-id, .logout-btn {
+                font-size: 0.8rem;
+                padding: 0.5rem 0.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 0.5rem 0.75rem;
+            }
+            
+            .logo-text {
+                display: none;
+            }
+            
+            .webinar-title {
+                font-size: 1.1rem;
+            }
+            
+            .speaker-info {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.5rem;
+            }
+            
+            .webinar-info {
+                display: none;
+            }
+
+            .video-frame-container {
+                max-height: 100vh;
+            }
+        }
+
+        /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes logoShine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-surface);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-gold);
+            border-radius: var(--radius-sm);
+        }
+
+        .video-container.fullscreen::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container" id="videoContainer">
+        <header class="header" id="header">
+            <div class="logo-wrapper">
+                <div class="logo">AH</div>
+                <div class="logo-text">
+                    <div class="logo-main">Anjuman e Hakimi</div>
+                    <div class="logo-sub">Najmi Mohallah Ratlam</div>
+                </div>
+            </div>
+            <div class="user-info">
+                <div class="user-id">Majlis ID: {{ its_id }}</div>
+                <div class="logout-dropdown">
+                    <a href="javascript:void(0)" class="logout-btn" onclick="toggleDropdown()">Session <i class="fas fa-angle-down"></i></a>
+                    <div class="dropdown-content" id="sessionDropdown">
+                        <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout this device</a>
+                        <a href="{{ url_for('force_logout') }}" onclick="return confirm('This will log you out from ALL devices. Continue?');"><i class="fas fa-power-off"></i> Logout from all devices</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="webinar-info" id="webinarInfo">
+                <div class="badge">
+                    <i class="fas fa-video"></i>
+                    Live Stream - Majlis
+                </div>
+                <h1 class="webinar-title">{{ webinar_title }}</h1>
+                <div class="webinar-meta">
+                    <div class="speaker-info">
+                        <div class="speaker-avatar">
+                            <i class="fas fa-microphone"></i>
+                        </div>
+                        <div class="speaker-details">
+                            <h4>{{ webinar_speaker }}</h4>
+                            <span>Live Now</span>
+                        </div>
+                    </div>
+                    <div class="schedule-info">
+                        <i class="fas fa-calendar"></i> {{ webinar_date }} at {{ webinar_time }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="video-section">
+                <div class="video-frame-container">
+                    <div class="loading-overlay" id="loadingOverlay">
+                        <div class="spinner"></div>
+                        <div class="loading-text">Loading stream...</div>
+                    </div>
+                    <iframe 
+                        class="video-frame" 
+                        id="videoFrame"
+                        src="{{ embed_url }}"
+                        allow="autoplay; encrypted-media; fullscreen"
+                        allowfullscreen
+                        playsinline>
+                    </iframe>
+                    <div class="control-group">
+                        <div class="control-section">
+                            <button class="control-btn" id="volumeButton" title="Toggle Volume">
+                                <i class="fas fa-volume-up" id="volumeIcon"></i>
+                            </button>
+                        </div>
+                        <div class="control-section">
+                            <button class="control-btn" id="fullscreenButton" title="Enter Fullscreen">
+                                <i class="fas fa-expand" id="fullscreenIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const videoContainer = document.getElementById('videoContainer');
+            const videoFrame = document.getElementById('videoFrame');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const volumeButton = document.getElementById('volumeButton');
+            const volumeIcon = document.getElementById('volumeIcon');
+            const fullscreenButton = document.getElementById('fullscreenButton');
+            const fullscreenIcon = document.getElementById('fullscreenIcon');
+            const header = document.getElementById('header');
+            const webinarInfo = document.getElementById('webinarInfo');
+
+            let isFullscreen = false;
+            let isMuted = true;
+
+            // Hide loading overlay after iframe loads
+            if (videoFrame) {
+                videoFrame.addEventListener('load', function() {
+                    setTimeout(() => {
+                        if (loadingOverlay) {
+                            loadingOverlay.style.opacity = '0';
+                            setTimeout(() => {
+                                loadingOverlay.style.display = 'none';
+                            }, 500);
+                        }
+                    }, 1000);
+                });
+            }
+
+            // Volume control
+            if (volumeButton) {
+                volumeButton.addEventListener('click', function() {
+                    if (isMuted) {
+                        if (videoFrame) {
+                            videoFrame.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+                        }
+                        if (volumeIcon) volumeIcon.className = 'fas fa-volume-up';
+                        isMuted = false;
+                    } else {
+                        if (videoFrame) {
+                            videoFrame.contentWindow.postMessage('{"event":"command","func":"mute","args":""}', '*');
+                        }
+                        if (volumeIcon) volumeIcon.className = 'fas fa-volume-mute';
+                        isMuted = true;
+                    }
+                });
+            }
+
+            // Fullscreen control
+            if (fullscreenButton) {
+                fullscreenButton.addEventListener('click', function() {
+                    if (!isFullscreen) {
+                        // Enter fullscreen
+                        if (videoContainer.requestFullscreen) {
+                            videoContainer.requestFullscreen();
+                        } else if (videoContainer.webkitRequestFullscreen) {
+                            videoContainer.webkitRequestFullscreen();
+                        } else if (videoContainer.msRequestFullscreen) {
+                            videoContainer.msRequestFullscreen();
+                        } else {
+                            // Fallback for browsers that don't support fullscreen API
+                            isFullscreen = true;
+                            videoContainer.classList.add('fullscreen');
+                            if (fullscreenIcon) fullscreenIcon.className = 'fas fa-compress';
+                            if (fullscreenButton) fullscreenButton.title = 'Exit Fullscreen';
+                            if (header) header.style.display = 'none';
+                            if (webinarInfo) webinarInfo.style.display = 'none';
+                        }
+                    } else {
+                        // Exit fullscreen
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen();
+                        } else if (document.webkitExitFullscreen) {
+                            document.webkitExitFullscreen();
+                        } else if (document.msExitFullscreen) {
+                            document.msExitFullscreen();
+                        } else {
+                            // Fallback
+                            isFullscreen = false;
+                            videoContainer.classList.remove('fullscreen');
+                            if (fullscreenIcon) fullscreenIcon.className = 'fas fa-expand';
+                            if (fullscreenButton) fullscreenButton.title = 'Enter Fullscreen';
+                            if (header) header.style.display = 'flex';
+                            if (webinarInfo) webinarInfo.style.display = 'block';
+                        }
+                    }
+                });
+            }
+
+            // Listen for fullscreen changes
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+            function handleFullscreenChange() {
+                if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+                    // Entered fullscreen
+                    isFullscreen = true;
+                    videoContainer.classList.add('fullscreen');
+                    if (fullscreenIcon) fullscreenIcon.className = 'fas fa-compress';
+                    if (fullscreenButton) fullscreenButton.title = 'Exit Fullscreen';
+                    if (header) header.style.display = 'none';
+                    if (webinarInfo) webinarInfo.style.display = 'none';
+                } else {
+                    // Exited fullscreen
+                    isFullscreen = false;
+                    videoContainer.classList.remove('fullscreen');
+                    if (fullscreenIcon) fullscreenIcon.className = 'fas fa-expand';
+                    if (fullscreenButton) fullscreenButton.title = 'Enter Fullscreen';
+                    if (header) header.style.display = 'flex';
+                    if (webinarInfo) webinarInfo.style.display = 'block';
+                }
+            }
+
+            // Prevent zoom on double tap for better mobile experience
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function (event) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+
+            console.log('Ratlam Relay Centre - Majlis Video player initialized successfully');
+        });
+
+        // Session management dropdown toggle
+        function toggleDropdown() {
+            const dropdown = document.getElementById('sessionDropdown');
+            if (dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            } else {
+                dropdown.style.display = 'block';
+            }
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('sessionDropdown');
+            const logoutBtn = document.querySelector('.logout-btn');
+            
+            if (!event.target.closest('.logout-dropdown') && dropdown && dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        // Auto logout after inactivity (30 minutes)
+        let inactivityTimer;
+        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+        
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(function() {
+                alert("You've been inactive for 30 minutes. You will be logged out for security reasons.");
+                window.location.href = "{{ url_for('logout') }}";
+            }, INACTIVITY_TIMEOUT);
+        }
+        
+        // Reset timer on user activity
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(function(event) {
+            document.addEventListener(event, resetInactivityTimer, true);
+        });
+        
+        // Start the timer
+        resetInactivityTimer();
+        
+        // Session monitoring - check every 5 seconds if session is still valid
+        function checkSessionStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.logged_in) {
+                        alert('Your session has been terminated. You will be redirected to the login page.');
+                        window.location.href = "{{ url_for('index') }}";
+                    }
+                })
+                .catch(error => {
+                    console.log('Session check failed:', error);
+                });
+        }
+        
+        // Check session status every 5 seconds
+        setInterval(checkSessionStatus, 5000);
+        
+        // Initial session check
+        checkSessionStatus();
+        
+        // Disable right-click and dev tools
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' || 
+                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                (e.ctrlKey && e.shiftKey && e.key === 'C') ||
+                (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    </script>
+    
+    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(9, 13, 27, 0.8); backdrop-filter: blur(10px); padding: 10px; text-align: center; font-size: 0.85rem; color: rgba(255, 255, 255, 0.65); border-top: 1px solid rgba(212, 175, 55, 0.2);">
+        Developed with <span style="color: #ff4d4d; display: inline-block; animation: heartbeat 1.5s ease infinite;">♥</span> by Huzefa Nalkheda wala
+    </div>
+</body>
+</html>
+'''
+
 # No Webinar Template (keeping existing)
 NO_WEBINAR_TEMPLATE = '''
 <!DOCTYPE html>
@@ -2995,7 +3822,7 @@ def majlis():
     if webinar_data.get('no_webinar', False):
         return render_template_string(NO_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token)
     else:
-        return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=user_id, session_token=session_token, **webinar_data)
+        return render_template_string(MAJLIS_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token, **webinar_data)
 
 @app.route('/logout')
 def logout():
