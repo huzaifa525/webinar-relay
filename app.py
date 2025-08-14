@@ -2531,26 +2531,8 @@ WEBINAR_TEMPLATE_IMPROVED = '''
         // Start the timer
         resetInactivityTimer();
         
-        // Session monitoring - check every 5 seconds if session is still valid
-        function checkSessionStatus() {
-            fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.logged_in) {
-                        alert('Your session has been terminated. You will be redirected to the login page.');
-                        window.location.href = "{{ url_for('index') }}";
-                    }
-                })
-                .catch(error => {
-                    console.log('Session check failed:', error);
-                });
-        }
-        
-        // Check session status every 5 seconds
-        setInterval(checkSessionStatus, 5000);
-        
-        // Initial session check
-        checkSessionStatus();
+        // Session monitoring removed to reduce server costs
+        // Session will be checked on page navigation and user activity
     </script>
 </body>
 </html>
@@ -3544,26 +3526,8 @@ MAJLIS_WEBINAR_TEMPLATE = '''
         // Start the timer
         resetInactivityTimer();
         
-        // Session monitoring - check every 5 seconds if session is still valid
-        function checkSessionStatus() {
-            fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.logged_in) {
-                        alert('Your session has been terminated. You will be redirected to the login page.');
-                        window.location.href = "{{ url_for('index') }}";
-                    }
-                })
-                .catch(error => {
-                    console.log('Session check failed:', error);
-                });
-        }
-        
-        // Check session status every 5 seconds
-        setInterval(checkSessionStatus, 5000);
-        
-        // Initial session check
-        checkSessionStatus();
+        // Session monitoring removed to reduce server costs
+        // Session will be checked on page navigation and user activity
         
         // Disable right-click and dev tools
         document.addEventListener('contextmenu', e => e.preventDefault());
@@ -3988,26 +3952,8 @@ NO_WEBINAR_TEMPLATE = '''
         // Start the timer
         resetInactivityTimer();
         
-        // Session monitoring - check every 5 seconds if session is still valid
-        function checkSessionStatus() {
-            fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.logged_in) {
-                        alert('Your session has been terminated. You will be redirected to the login page.');
-                        window.location.href = "{{ url_for('index') }}";
-                    }
-                })
-                .catch(error => {
-                    console.log('Session check failed:', error);
-                });
-        }
-        
-        // Check session status every 5 seconds
-        setInterval(checkSessionStatus, 5000);
-        
-        // Initial session check
-        checkSessionStatus();
+        // Session monitoring removed to reduce server costs
+        // Session will be checked on page navigation and user activity
         
         // Disable right-click and dev tools
         document.addEventListener('contextmenu', e => e.preventDefault());
@@ -4536,6 +4482,14 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
         }
 
         .form-group { margin-bottom: 1rem; }
+        
+        .help-text {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+            display: block;
+            font-style: italic;
+        }
 
         label {
             display: block;
@@ -4738,6 +4692,18 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
                                    value="{{ its_settings.webinar_speaker }}">
                         </div>
                         <div class="form-group">
+                            <label for="start_time">Start Time (Auto-activate):</label>
+                            <input type="datetime-local" id="start_time" name="start_time" 
+                                   value="{% if its_settings.start_time %}{{ its_settings.start_time[:19] }}{% endif %}">
+                            <small class="help-text">Webinar will automatically start at this time</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="end_time">End Time (Auto-deactivate):</label>
+                            <input type="datetime-local" id="end_time" name="end_time" 
+                                   value="{% if its_settings.end_time %}{{ its_settings.end_time[:19] }}{% endif %}">
+                            <small class="help-text">Webinar will automatically stop at this time</small>
+                        </div>
+                        <div class="form-group">
                             <label>
                                 <input type="checkbox" name="no_webinar" 
                                        {% if its_settings.no_webinar %}checked{% endif %}>
@@ -4839,6 +4805,18 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
                             <label for="majlis_webinar_speaker">Speaker:</label>
                             <input type="text" id="majlis_webinar_speaker" name="majlis_webinar_speaker" 
                                    value="{{ majlis_settings.webinar_speaker }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="majlis_start_time">Start Time (Auto-activate):</label>
+                            <input type="datetime-local" id="majlis_start_time" name="majlis_start_time" 
+                                   value="{% if majlis_settings.start_time %}{{ majlis_settings.start_time[:19] }}{% endif %}">
+                            <small class="help-text">Webinar will automatically start at this time</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="majlis_end_time">End Time (Auto-deactivate):</label>
+                            <input type="datetime-local" id="majlis_end_time" name="majlis_end_time" 
+                                   value="{% if majlis_settings.end_time %}{{ majlis_settings.end_time[:19] }}{% endif %}">
+                            <small class="help-text">Webinar will automatically stop at this time</small>
                         </div>
                         <div class="form-group">
                             <label>
@@ -5076,6 +5054,27 @@ def admin_update_webinar_settings():
         settings.webinar_time = request.form.get('webinar_time', '')
         settings.webinar_speaker = request.form.get('webinar_speaker', '')
         settings.no_webinar = 'no_webinar' in request.form
+        
+        # Handle start_time and end_time
+        start_time_str = request.form.get('start_time', '').strip()
+        end_time_str = request.form.get('end_time', '').strip()
+        
+        # Parse datetime strings if provided
+        if start_time_str:
+            try:
+                settings.start_time = datetime.fromisoformat(start_time_str.replace('T', ' '))
+            except ValueError:
+                settings.start_time = None
+        else:
+            settings.start_time = None
+            
+        if end_time_str:
+            try:
+                settings.end_time = datetime.fromisoformat(end_time_str.replace('T', ' '))
+            except ValueError:
+                settings.end_time = None
+        else:
+            settings.end_time = None
         
         db.session.commit()
         
@@ -5355,6 +5354,27 @@ def admin_update_majlis_settings():
         settings.webinar_time = webinar_time
         settings.webinar_speaker = webinar_speaker
         settings.no_webinar = no_webinar
+        
+        # Handle start_time and end_time for Majlis
+        start_time_str = request.form.get('majlis_start_time', '').strip()
+        end_time_str = request.form.get('majlis_end_time', '').strip()
+        
+        # Parse datetime strings if provided
+        if start_time_str:
+            try:
+                settings.start_time = datetime.fromisoformat(start_time_str.replace('T', ' '))
+            except ValueError:
+                settings.start_time = None
+        else:
+            settings.start_time = None
+            
+        if end_time_str:
+            try:
+                settings.end_time = datetime.fromisoformat(end_time_str.replace('T', ' '))
+            except ValueError:
+                settings.end_time = None
+        else:
+            settings.end_time = None
         
         db.session.commit()
         
