@@ -3980,9 +3980,10 @@ def admin_dashboard():
         return f"Error loading admin dashboard: {str(e)}"
 
 @app.route('/admin/add_bulk_its', methods=['POST'])
+@admin_required
 def admin_add_bulk_its():
     """Add multiple ITS IDs from a textarea"""
-    bulk_its = request.form.get('bulk_its', '').strip()
+    bulk_its = request.form.get('bulk_its_ids', '').strip()
     
     if not bulk_its:
         return redirect(url_for('admin_dashboard') + '?message=No ITS IDs provided&type=error')
