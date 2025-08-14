@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database migration script to add youtube_video_id column to webinar_settings table
+Database migration script to add youtube_video_id, start_time, and end_time columns to webinar_settings and majlis_webinar_settings tables
 """
 
 import psycopg2
@@ -32,15 +32,25 @@ def execute_migration(conn):
         
         print("🚀 Starting database migration...")
         
-        # Step 1: Add the new column
-        print("📝 Adding youtube_video_id column...")
+        # Step 1: Add columns to webinar_settings table
+        print("📝 Adding columns to webinar_settings table...")
         cursor.execute("""
             ALTER TABLE webinar_settings 
-            ADD COLUMN IF NOT EXISTS youtube_video_id VARCHAR(32);
+            ADD COLUMN IF NOT EXISTS youtube_video_id VARCHAR(32),
+            ADD COLUMN IF NOT EXISTS start_time TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS end_time TIMESTAMP;
         """)
         
-        # Step 2: Update existing rows with default value
-        print("🔄 Setting default value for existing rows...")
+        # Step 2: Add columns to majlis_webinar_settings table
+        print("📝 Adding columns to majlis_webinar_settings table...")
+        cursor.execute("""
+            ALTER TABLE majlis_webinar_settings 
+            ADD COLUMN IF NOT EXISTS start_time TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS end_time TIMESTAMP;
+        """)
+        
+        # Step 3: Update existing rows with default values
+        print("🔄 Setting default values for existing rows...")
         cursor.execute("""
             UPDATE webinar_settings 
             SET youtube_video_id = 'GXRL7PcPbOA' 
@@ -53,16 +63,33 @@ def execute_migration(conn):
         # Verify the changes
         cursor.execute("""
             SELECT COUNT(*) as total_rows, 
-                   COUNT(youtube_video_id) as rows_with_video_id
+                   COUNT(youtube_video_id) as rows_with_video_id,
+                   COUNT(start_time) as rows_with_start_time,
+                   COUNT(end_time) as rows_with_end_time
             FROM webinar_settings;
         """)
         
         result = cursor.fetchone()
-        total_rows, rows_with_video_id = result
+        total_rows, rows_with_video_id, rows_with_start_time, rows_with_end_time = result
+        
+        cursor.execute("""
+            SELECT COUNT(*) as total_rows,
+                   COUNT(start_time) as rows_with_start_time,
+                   COUNT(end_time) as rows_with_end_time
+            FROM majlis_webinar_settings;
+        """)
+        
+        majlis_result = cursor.fetchone()
+        majlis_total_rows, majlis_rows_with_start_time, majlis_rows_with_end_time = majlis_result
         
         print("✅ Migration completed successfully!")
-        print(f"📊 Total rows: {total_rows}")
-        print(f"📺 Rows with youtube_video_id: {rows_with_video_id}")
+        print(f"📊 WebinarSettings - Total rows: {total_rows}")
+        print(f"📺 WebinarSettings - Rows with youtube_video_id: {rows_with_video_id}")
+        print(f"⏰ WebinarSettings - Rows with start_time: {rows_with_start_time}")
+        print(f"⏰ WebinarSettings - Rows with end_time: {rows_with_end_time}")
+        print(f"📊 MajlisWebinarSettings - Total rows: {majlis_total_rows}")
+        print(f"⏰ MajlisWebinarSettings - Rows with start_time: {majlis_rows_with_start_time}")
+        print(f"⏰ MajlisWebinarSettings - Rows with end_time: {majlis_rows_with_end_time}")
         
         cursor.close()
         
@@ -82,7 +109,8 @@ def main():
     CONNECTION_STRING = "postgresql://postgres:bHaJHoNZuiNzjhOMRkiCwlsgvxsHyUxM@yamabiko.proxy.rlwy.net:37305/railway"
     
     print("🔧 Webinar Settings Migration Tool")
-    print("=" * 40)
+    print("Adding youtube_video_id, start_time, and end_time columns")
+    print("=" * 50)
     
     # Connect to database
     conn = connect_to_db(CONNECTION_STRING)
@@ -97,7 +125,10 @@ def main():
     
     if success:
         print("\n🎉 Migration completed successfully!")
-        print("Your webinar_settings table now has the youtube_video_id column.")
+        print("Your webinar_settings and majlis_webinar_settings tables now have the new columns:")
+        print("• youtube_video_id (webinar_settings only)")
+        print("• start_time (both tables)")
+        print("• end_time (both tables)")
     else:
         print("\n💥 Migration failed. Please check the errors above.")
         sys.exit(1)

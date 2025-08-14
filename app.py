@@ -4113,7 +4113,7 @@ def majlis():
     if webinar_data.get('no_webinar', False):
         return render_template_string(NO_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token)
     else:
-        return render_template_string(MAJLIS_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token, **webinar_data)
+        return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=user_id, session_token=session_token, **webinar_data)
 
 @app.route('/logout')
 def logout():
