@@ -2451,6 +2451,27 @@ WEBINAR_TEMPLATE_IMPROVED = '''
         
         // Start the timer
         resetInactivityTimer();
+        
+        // Session monitoring - check every 5 seconds if session is still valid
+        function checkSessionStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.logged_in) {
+                        alert('Your session has been terminated. You will be redirected to the login page.');
+                        window.location.href = "{{ url_for('index') }}";
+                    }
+                })
+                .catch(error => {
+                    console.log('Session check failed:', error);
+                });
+        }
+        
+        // Check session status every 5 seconds
+        setInterval(checkSessionStatus, 5000);
+        
+        // Initial session check
+        checkSessionStatus();
     </script>
 </body>
 </html>
@@ -2794,6 +2815,27 @@ NO_WEBINAR_TEMPLATE = '''
         
         // Start the timer
         resetInactivityTimer();
+        
+        // Session monitoring - check every 5 seconds if session is still valid
+        function checkSessionStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.logged_in) {
+                        alert('Your session has been terminated. You will be redirected to the login page.');
+                        window.location.href = "{{ url_for('index') }}";
+                    }
+                })
+                .catch(error => {
+                    console.log('Session check failed:', error);
+                });
+        }
+        
+        // Check session status every 5 seconds
+        setInterval(checkSessionStatus, 5000);
+        
+        // Initial session check
+        checkSessionStatus();
         
         // Disable right-click and dev tools
         document.addEventListener('contextmenu', e => e.preventDefault());
