@@ -749,8 +749,10 @@ LOGIN_TEMPLATE = '''
         
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            /* Using local background image for better performance */
-            background: url('/static/background.png') center/cover no-repeat fixed;
+            /* Optimized: CSS gradient + subtle pattern instead of 1.6 MB image */
+            background:
+                linear-gradient(135deg, rgba(9, 13, 27, 0.95) 0%, rgba(15, 20, 40, 0.9) 50%, rgba(26, 35, 63, 0.95) 100%),
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.02) 10px, rgba(255,255,255,.02) 20px);
             min-height: 100vh;
             color: var(--text-primary);
             display: flex;
@@ -1220,8 +1222,10 @@ WEBINAR_TEMPLATE_IMPROVED = '''
 
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            /* Using local background image for better performance */
-            background: url('/static/background.png') center/cover no-repeat fixed;
+            /* Optimized: CSS gradient + subtle pattern instead of 1.6 MB image */
+            background:
+                linear-gradient(135deg, rgba(9, 13, 27, 0.95) 0%, rgba(15, 20, 40, 0.9) 50%, rgba(26, 35, 63, 0.95) 100%),
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.02) 10px, rgba(255,255,255,.02) 20px);
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -4027,11 +4031,6 @@ ADMIN_LOGIN_TEMPLATE = '''<!-- Admin login template remains the same -->'''
 ADMIN_DASHBOARD_TEMPLATE = '''<!-- Admin dashboard template remains the same -->'''
 
 # API Health Check route
-@app.route('/static/background.png')
-def background_image():
-    """Serve background image with long-term caching"""
-    return send_file('background-1.png', mimetype='image/png', max_age=31536000)  # Cache for 1 year
-
 @app.route('/health')
 def health_check():
     """Health check endpoint for monitoring"""
