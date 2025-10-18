@@ -5008,7 +5008,7 @@ def admin_logout():
 @app.route('/admin/add_its', methods=['POST'])
 def admin_add_its():
     """Add a single ITS ID"""
-    its_id = request.form.get('single_its', '').strip()
+    its_id = request.form.get('its_id', '').strip()
     
     if not its_id or len(its_id) != 8 or not its_id.isdigit():
         return redirect(url_for('admin_dashboard') + '?message=Invalid ITS ID format&type=error')
@@ -5016,15 +5016,18 @@ def admin_add_its():
     try:
         # Check if ID already exists
         existing = ItsID.query.get(its_id)
-        
+
         if existing:
             return redirect(url_for('admin_dashboard') + '?message=ITS ID already exists&type=error')
-        
+
         # Add new ITS ID
         new_id = ItsID(id=its_id)
         db.session.add(new_id)
         db.session.commit()
-        
+
+        # Update Redis cache
+        redis_client.sadd('cached:its_ids', its_id)
+
         return redirect(url_for('admin_dashboard') + '?message=ITS ID added successfully&type=success')
     except Exception as e:
         db.session.rollback()
@@ -5178,9 +5181,13 @@ def admin_add_bulk_its():
         for its_id in new_ids:
             new_id = ItsID(id=its_id)
             db.session.add(new_id)
-        
+
         db.session.commit()
-        
+
+        # Update Redis cache for all new IDs
+        if new_ids:
+            redis_client.sadd('cached:its_ids', *new_ids)
+
         return redirect(url_for('admin_dashboard') + f'?message=Added {len(new_ids)} ITS IDs successfully&type=success')
     
     except Exception as e:
@@ -5205,11 +5212,14 @@ def admin_delete_its():
         
         # Delete any associated sessions first
         remove_existing_user_sessions(its_id, 'its')
-        
+
         # Delete the ITS ID
         db.session.delete(id_to_delete)
         db.session.commit()
-        
+
+        # Remove from Redis cache
+        redis_client.srem('cached:its_ids', its_id)
+
         return redirect(url_for('admin_dashboard') + '?message=ITS ID deleted successfully&type=success')
     except Exception as e:
         db.session.rollback()
