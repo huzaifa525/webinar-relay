@@ -1,5 +1,6 @@
 Flask
 Flask-WTF
+Flask-Compress
 gunicorn
 flask-socketio
 requests

@@ -10,20 +10,31 @@ Date: August 9, 2025
 Version: 3.0.0 - PostgreSQL Database Integration
 """
 
-from flask import Flask, render_template_string, request, redirect, url_for, session, flash, jsonify, send_file
+from flask import Flask, render_template_string, request, redirect, url_for, session, flash, jsonify, send_file, make_response
 import os
 from datetime import datetime, timedelta
 import hashlib
 import secrets
-from functools import wraps
+from functools import wraps, lru_cache
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 import json
 import redis
+from flask_compress import Compress
 
 app = Flask(__name__)
 app.secret_key = 'Huzaifa53'
+
+# Enable gzip compression for all responses
+compress = Compress()
+compress.init_app(app)
+
+# Flask performance configurations
+app.config['COMPRESS_MIMETYPES'] = ['text/html', 'text/css', 'text/xml', 'application/json', 'application/javascript']
+app.config['COMPRESS_LEVEL'] = 6  # Balance between speed and compression
+app.config['COMPRESS_MIN_SIZE'] = 500  # Only compress responses larger than 500 bytes
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000  # Cache static files for 1 year
 
 # Database configuration with connection pooling
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -34,19 +45,34 @@ app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'poolclass': QueuePool,
-    'pool_size': 3,
+    'pool_size': 2,  # Reduced for Neon - it handles pooling on their side
     'pool_timeout': 30,
-    'pool_recycle': 3600,
-    'max_overflow': 0
+    'pool_recycle': 300,  # Recycle connections every 5 minutes (Neon sleeps after inactivity)
+    'pool_pre_ping': True,  # Check connections before using (important for Neon auto-sleep)
+    'max_overflow': 1,  # Allow 1 extra connection during spikes
+    'echo': False,  # Disable SQL logging for performance
+    'connect_args': {
+        'connect_timeout': 10,
+        'options': '-c statement_timeout=30000'  # 30 second query timeout
+    }
 }
 db = SQLAlchemy(app)
 
-# Redis configuration
+# Redis configuration with connection pooling
 REDIS_URL = os.environ.get('REDIS_URL')
 if not REDIS_URL:
     raise ValueError("REDIS_URL environment variable is required. Please set it before running the app.")
 
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+# Create Redis connection pool for better performance
+redis_pool = redis.ConnectionPool.from_url(
+    REDIS_URL,
+    decode_responses=True,
+    max_connections=10,  # Pool size
+    socket_keepalive=True,
+    socket_connect_timeout=5,
+    retry_on_timeout=True
+)
+redis_client = redis.Redis(connection_pool=redis_pool)
 
 # Admin credentials (you can modify these)
 ADMIN_USERNAME = 'admin'
@@ -5445,6 +5471,34 @@ def admin_force_login():
     except Exception as e:
         print(f"Error force-logging out user: {e}")
         return redirect(url_for('admin_dashboard') + f'?message=Error force-logging out user: {str(e)}&type=error')
+
+
+# Performance optimization: Add caching headers
+@app.after_request
+def add_header(response):
+    """Add performance and security headers to all responses"""
+    # Only add caching for non-admin routes and static content
+    if not request.path.startswith('/admin'):
+        if request.endpoint in ['index', 'webinar', 'majlis']:
+            # Cache HTML pages for 5 minutes
+            response.headers['Cache-Control'] = 'public, max-age=300'
+        elif request.endpoint == 'api_status':
+            # Don't cache API status
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+    else:
+        # Never cache admin pages
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+
+    # Security headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+
+    return response
 
 
 if __name__ == '__main__':
