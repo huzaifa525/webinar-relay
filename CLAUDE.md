@@ -113,21 +113,21 @@ docker run -e REDIS_URL="redis://..." -p 5000:5000 webinar-relay
 ## Configuration
 
 ### Environment Variables
-The application now uses environment variables for database and Redis connections. See `.env.example` for template.
+The application **requires** environment variables for database and Redis connections. See `.env.example` for template.
 
 **Required Environment Variables:**
-- `DATABASE_URL`: PostgreSQL connection string
+- `DATABASE_URL`: PostgreSQL connection string (REQUIRED)
   - Format: `postgresql://user:password@host:port/database`
-  - Example (Railway): `postgresql://postgres:password@yamabiko.proxy.rlwy.net:37305/railway`
   - Example (Neon): `postgresql://user:password@ep-xxxxx-sg.neon.tech/neondb?sslmode=require`
+  - Example (Railway): `postgresql://postgres:password@host:port/railway`
 
-- `REDIS_URL`: Redis connection string
-  - Format: `redis://username:password@host:port`
-  - Example (Railway): `redis://default:password@switchback.proxy.rlwy.net:43339`
-  - Example (Upstash): `redis://default:password@region.upstash.io:port`
+- `REDIS_URL`: Redis connection string (REQUIRED)
+  - Format: `redis://username:password@host:port` or `rediss://` for SSL
+  - Example (Upstash): `rediss://default:password@host.upstash.io:6379`
+  - Example (Railway): `redis://default:password@host:port`
 
-**Fallback Behavior:**
-If environment variables are not set, the application falls back to hardcoded Railway credentials (for backward compatibility).
+**Important:**
+The application will fail to start if these environment variables are not set. There are no hardcoded fallback credentials.
 
 ### Database Connection (PostgreSQL)
 Connection pooling configuration:
@@ -174,19 +174,21 @@ Separate video embedding for ITS and Majlis users:
 ## Security Notes
 
 ### Credentials Management
-**✅ DATABASE_URL and REDIS_URL now support environment variables** (as of latest update)
-- Database and Redis URLs can be set via environment variables
-- Fallback to hardcoded values if not set (for development)
+**✅ DATABASE_URL and REDIS_URL are now required environment variables**
+- No hardcoded database or Redis credentials in code
+- Application will fail to start if environment variables are missing
 - See `.env.example` for configuration template
+- Credentials are completely removed from version control
 
 **⚠️ Still hardcoded in app.py:**
-- Admin password (app.py:47)
+- Admin password (app.py:52-53)
 - Flask secret key (app.py:26)
 
 **Production Requirements**:
-- Set `DATABASE_URL` and `REDIS_URL` as environment variables
-- Move admin credentials to environment variables
-- Use strong, random Flask secret key
+- ✅ Set `DATABASE_URL` environment variable (REQUIRED)
+- ✅ Set `REDIS_URL` environment variable (REQUIRED)
+- ⚠️ Move admin credentials to environment variables (recommended)
+- ⚠️ Use strong, random Flask secret key (recommended)
 
 ### Session Security
 - Redis sessions with SHA-256 tokens

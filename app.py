@@ -26,7 +26,10 @@ app = Flask(__name__)
 app.secret_key = 'Huzaifa53'
 
 # Database configuration with connection pooling
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:bHaJHoNZuiNzjhOMRkiCwlsgvxsHyUxM@yamabiko.proxy.rlwy.net:37305/railway')
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is required. Please set it before running the app.")
+
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
@@ -39,7 +42,10 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 db = SQLAlchemy(app)
 
 # Redis configuration
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://default:disvEqUIUIJGKERTqkWhdgWOxncsbaJR@switchback.proxy.rlwy.net:43339')
+REDIS_URL = os.environ.get('REDIS_URL')
+if not REDIS_URL:
+    raise ValueError("REDIS_URL environment variable is required. Please set it before running the app.")
+
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 # Admin credentials (you can modify these)
