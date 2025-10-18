@@ -693,8 +693,16 @@ LOGIN_TEMPLATE = '''
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal - Login</title>
+
+    <!-- Preconnect to external domains for faster loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Load fonts with display=swap to prevent render blocking -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+        /* Critical CSS inlined for fastest render */
         
         :root {
             --brand-primary: #0a3da0;
@@ -741,7 +749,8 @@ LOGIN_TEMPLATE = '''
         
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: url('https://i.ibb.co/JWTvVh2f/background-1.png') center/cover no-repeat fixed;
+            /* Using local background image for better performance */
+            background: url('/static/background.png') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             display: flex;
@@ -1139,10 +1148,20 @@ WEBINAR_TEMPLATE_IMPROVED = '''
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>{{ webinar_title }} - Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal</title>
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Preconnect for faster loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.youtube.com">
+
+    <!-- Load fonts with display=swap -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome for icons - async load -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+        /* Critical CSS inlined */
         
         :root {
             /* Premium color system */
@@ -1201,7 +1220,8 @@ WEBINAR_TEMPLATE_IMPROVED = '''
 
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: url('https://i.ibb.co/JWTvVh2f/background-1.png') center/cover no-repeat fixed;
+            /* Using local background image for better performance */
+            background: url('/static/background.png') center/cover no-repeat fixed;
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -4007,6 +4027,11 @@ ADMIN_LOGIN_TEMPLATE = '''<!-- Admin login template remains the same -->'''
 ADMIN_DASHBOARD_TEMPLATE = '''<!-- Admin dashboard template remains the same -->'''
 
 # API Health Check route
+@app.route('/static/background.png')
+def background_image():
+    """Serve background image with long-term caching"""
+    return send_file('background-1.png', mimetype='image/png', max_age=31536000)  # Cache for 1 year
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for monitoring"""
