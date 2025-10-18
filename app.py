@@ -52,8 +52,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'max_overflow': 1,  # Allow 1 extra connection during spikes
     'echo': False,  # Disable SQL logging for performance
     'connect_args': {
-        'connect_timeout': 10,
-        'options': '-c statement_timeout=30000'  # 30 second query timeout
+        'connect_timeout': 10
     }
 }
 db = SQLAlchemy(app)
