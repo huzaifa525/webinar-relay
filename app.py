@@ -5521,10 +5521,19 @@ def add_header(response):
 
     return response
 
+# Favicon route to prevent 404 errors
+@app.route('/favicon.ico')
+def favicon():
+    """Serve a simple favicon or return 204 No Content"""
+    from flask import Response
+    return Response(status=204)  # No Content - browser won't show error
 
+# Initialize database on startup (runs once when app starts)
+with app.app_context():
+    db.create_all()
+    init_database()
+
+# Only use Flask dev server for local development
+# In production (Railway), Gunicorn from Procfile will be used instead
 if __name__ == '__main__':
-    # Create database tables
-    with app.app_context():
-        db.create_all()
-        init_database()
     app.run(debug=True, host='0.0.0.0', port=5000)
