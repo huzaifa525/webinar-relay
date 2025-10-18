@@ -56,8 +56,13 @@ This is a Flask web application called "Ratlam Relay Centre - Webinar Access Por
 # Install dependencies
 pip install redis flask-sqlalchemy psycopg2-binary
 
-# Set Redis connection (Railway)
-export REDIS_URL="redis://default:disvEqUIUIJGKERTqkWhdgWOxncsbaJR@switchback.proxy.rlwy.net:43339"
+# Set environment variables (required for database and Redis connections)
+export DATABASE_URL="postgresql://user:password@host:port/database"
+export REDIS_URL="redis://default:password@host:port"
+
+# Or copy .env.example to .env and update values
+cp .env.example .env
+# Edit .env with your actual credentials
 
 # Run development server (optimized for minimal resource usage)
 python app.py
@@ -69,8 +74,16 @@ flask run
 
 ### Windows Quick Start
 ```bash
-# Use the provided batch file
-start.bat
+# Set environment variables (Windows CMD)
+set DATABASE_URL=postgresql://user:password@host:port/database
+set REDIS_URL=redis://default:password@host:port
+
+# Or use PowerShell
+$env:DATABASE_URL="postgresql://user:password@host:port/database"
+$env:REDIS_URL="redis://default:password@host:port"
+
+# Then run
+python app.py
 ```
 
 ### Database Management
@@ -99,18 +112,34 @@ docker run -e REDIS_URL="redis://..." -p 5000:5000 webinar-relay
 
 ## Configuration
 
-### Redis Connection
-```python
-# Railway Redis URL
-REDIS_URL = "redis://default:disvEqUIUIJGKERTqkWhdgWOxncsbaJR@switchback.proxy.rlwy.net:43339"
-```
+### Environment Variables
+The application now uses environment variables for database and Redis connections. See `.env.example` for template.
+
+**Required Environment Variables:**
+- `DATABASE_URL`: PostgreSQL connection string
+  - Format: `postgresql://user:password@host:port/database`
+  - Example (Railway): `postgresql://postgres:password@yamabiko.proxy.rlwy.net:37305/railway`
+  - Example (Neon): `postgresql://user:password@ep-xxxxx-sg.neon.tech/neondb?sslmode=require`
+
+- `REDIS_URL`: Redis connection string
+  - Format: `redis://username:password@host:port`
+  - Example (Railway): `redis://default:password@switchback.proxy.rlwy.net:43339`
+  - Example (Upstash): `redis://default:password@region.upstash.io:port`
+
+**Fallback Behavior:**
+If environment variables are not set, the application falls back to hardcoded Railway credentials (for backward compatibility).
 
 ### Database Connection (PostgreSQL)
-Railway-hosted PostgreSQL with connection pooling:
+Connection pooling configuration:
 - Max connections: 3
 - Pool size: 3
 - Pool timeout: 30s
 - Pool recycle: 3600s
+
+### Redis Connection
+Redis client configuration:
+- Decode responses: True (automatic string decoding)
+- Connection URL: From environment variable or fallback
 
 ### Admin Credentials
 Default admin credentials:
@@ -144,13 +173,20 @@ Separate video embedding for ITS and Majlis users:
 
 ## Security Notes
 
-### Credentials in Code
-- Database connection string with credentials is hardcoded in app.py:26
-- Redis URL with credentials is hardcoded 
-- Admin password is hardcoded in app.py:32
-- Flask secret key is hardcoded in app.py:23
+### Credentials Management
+**✅ DATABASE_URL and REDIS_URL now support environment variables** (as of latest update)
+- Database and Redis URLs can be set via environment variables
+- Fallback to hardcoded values if not set (for development)
+- See `.env.example` for configuration template
 
-**Production Requirements**: Move all credentials to environment variables.
+**⚠️ Still hardcoded in app.py:**
+- Admin password (app.py:47)
+- Flask secret key (app.py:26)
+
+**Production Requirements**:
+- Set `DATABASE_URL` and `REDIS_URL` as environment variables
+- Move admin credentials to environment variables
+- Use strong, random Flask secret key
 
 ### Session Security
 - Redis sessions with SHA-256 tokens
