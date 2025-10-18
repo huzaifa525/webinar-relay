@@ -4064,8 +4064,6 @@ def api_status():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     """Home page / login route - supports both ITS and Majlis users"""
-    init_database()
-    
     if 'session_token' in request.cookies:
         session_token = request.cookies.get('session_token')
         session_info = verify_session(session_token)
