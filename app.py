@@ -74,6 +74,10 @@ REDIS_URL = os.environ.get('REDIS_URL')
 if not REDIS_URL:
     raise ValueError("REDIS_URL environment variable is required. Please set it before running the app.")
 
+# Majlis RTMP Streaming URL (self-hosted)
+MAJLIS_RTMP_URL = os.environ.get('MAJLIS_RTMP_URL', '')
+# Example: https://your-rtmp-server.railway.app
+
 # Create Redis connection pool for better performance
 redis_pool = redis.ConnectionPool.from_url(
     REDIS_URL,
@@ -3867,6 +3871,842 @@ MAJLIS_WEBINAR_TEMPLATE = '''
 </html>
 '''
 
+# RTMP Live Streaming Template (Majlis only)
+MAJLIS_RTMP_TEMPLATE = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Majlis Live Stream - Ratlam Relay Centre</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Video.js CSS -->
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+
+    <style>
+        :root {
+            --brand-primary: #0a3da0;
+            --brand-primary-light: #1c54c5;
+            --accent-gold: #d4af37;
+            --accent-gold-light: #f0cc50;
+            --bg-dark: #090d1b;
+            --bg-surface: #0f1428;
+            --bg-surface-light: #1a233f;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.85);
+            --text-tertiary: rgba(255, 255, 255, 0.65);
+            --gold-overlay: rgba(212, 175, 55, 0.08);
+            --gradient-gold: linear-gradient(135deg, var(--accent-gold), #a08c3a);
+            --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            background: radial-gradient(circle, var(--accent-gold), transparent);
+            border-radius: 50%;
+            opacity: 0.1;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.15;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Header */
+        .header {
+            position: relative;
+            z-index: 100;
+            background: rgba(15, 20, 40, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge {
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold-light);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .logout-dropdown {
+            position: relative;
+        }
+
+        .logout-btn {
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: var(--text-primary);
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: var(--accent-gold);
+            transform: translateY(-1px);
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.5rem;
+            background: var(--bg-surface-light);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 0.5rem;
+            min-width: 200px;
+            box-shadow: var(--shadow-md);
+            z-index: 1000;
+        }
+
+        .dropdown-item {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(212, 175, 55, 0.15);
+            color: var(--text-primary);
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            text-align: center;
+            color: var(--accent-gold);
+        }
+
+        /* Main Container */
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Live Stream Section */
+        .stream-section {
+            background: var(--bg-surface);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .stream-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 0, 0, 0.15);
+            border: 1px solid #ff0000;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            background: #ff0000;
+            border-radius: 50%;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .stream-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        /* Video Player Container */
+        .video-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Video.js Custom Styling */
+        .video-js {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 16 / 9;
+        }
+
+        .vjs-big-play-button {
+            background: rgba(212, 175, 55, 0.9) !important;
+            border: none !important;
+            border-radius: 50% !important;
+            width: 80px !important;
+            height: 80px !important;
+            line-height: 80px !important;
+            font-size: 2.5rem !important;
+            margin-top: -40px !important;
+            margin-left: -40px !important;
+        }
+
+        .vjs-big-play-button:hover {
+            background: rgba(212, 175, 55, 1) !important;
+        }
+
+        .vjs-control-bar {
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent) !important;
+        }
+
+        .vjs-play-control,
+        .vjs-volume-panel,
+        .vjs-fullscreen-control {
+            color: var(--accent-gold) !important;
+        }
+
+        .vjs-progress-control .vjs-play-progress {
+            background: var(--accent-gold) !important;
+        }
+
+        .vjs-loading-spinner {
+            border-color: var(--accent-gold) transparent transparent transparent !important;
+        }
+
+        /* Loading State */
+        .loading-message {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(212, 175, 55, 0.2);
+            border-top-color: var(--accent-gold);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Error State */
+        .error-message {
+            text-align: center;
+            padding: 3rem;
+            color: #ff4d4d;
+        }
+
+        .error-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(212, 175, 55, 0.08);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .info-box h3 {
+            color: var(--accent-gold-light);
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+
+        .info-box p {
+            color: var(--text-tertiary);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        /* WebSocket Notification */
+        .websocket-notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            min-width: 300px;
+            max-width: 400px;
+            padding: 1rem 1.5rem;
+            background: var(--bg-surface-light);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            z-index: 10000;
+            animation: slideInRight 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .websocket-notification.success {
+            border-color: #4caf50;
+            background: rgba(76, 175, 80, 0.15);
+        }
+
+        .websocket-notification.error {
+            border-color: #f44336;
+            background: rgba(244, 67, 54, 0.15);
+        }
+
+        .websocket-notification.warning {
+            border-color: #ff9800;
+            background: rgba(255, 152, 0, 0.15);
+        }
+
+        .websocket-notification.info {
+            border-color: #d4af37;
+            background: rgba(212, 175, 55, 0.15);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+            }
+
+            .logo {
+                font-size: 1.2rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .stream-section {
+                padding: 1.5rem;
+            }
+
+            .stream-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .stream-title {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Heartbeat animation */
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.1); }
+            50% { transform: scale(1); }
+        }
+
+        /* Footer */
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(9, 13, 27, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 10px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Header -->
+    <header class="header" id="header">
+        <div class="header-left">
+            <div class="logo">
+                <i class="fas fa-satellite-dish"></i>
+                Ratlam Relay Centre
+            </div>
+            <span class="badge">Majlis Live Stream</span>
+        </div>
+        <div class="logout-dropdown">
+            <button class="logout-btn" onclick="toggleDropdown()">
+                <i class="fas fa-user-circle"></i>
+                <span>ID: {{ user_id }}</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="dropdown-menu" id="sessionDropdown">
+                <div class="dropdown-item" onclick="window.location.href='{{ url_for('logout') }}'">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Live Stream Section -->
+        <section class="stream-section">
+            <div class="stream-header">
+                <div class="live-indicator">
+                    <span class="live-dot"></span>
+                    <span>LIVE</span>
+                </div>
+                <h1 class="stream-title">Majlis Live Stream</h1>
+            </div>
+
+            <!-- Video Player -->
+            <div class="video-container" id="videoContainer">
+                <div class="loading-message" id="loadingMessage">
+                    <div class="loading-spinner"></div>
+                    <p>Connecting to live stream...</p>
+                </div>
+                <video id="liveStream" class="video-js vjs-default-skin" controls preload="auto" style="display: none;">
+                    <p class="vjs-no-js">
+                        To view this video please enable JavaScript, and consider upgrading to a web browser that
+                        <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+                    </p>
+                </video>
+                <div class="error-message" id="errorMessage" style="display: none;">
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <h3>Stream Unavailable</h3>
+                    <p>Unable to connect to the live stream. Please try refreshing the page.</p>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="info-box">
+                <h3><i class="fas fa-info-circle"></i> About This Stream</h3>
+                <p>This is a secure, token-authenticated live stream. The stream URL is encrypted and cannot be shared. Your session will automatically refresh if the stream is updated.</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        Developed with <span style="color: #ff4d4d; display: inline-block; animation: heartbeat 1.5s ease infinite;">♥</span> by Huzefa Nalkheda wala
+    </footer>
+
+    <!-- Video.js Library -->
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
+    <script>
+        // ========== Particle Animation ==========
+        function createParticles() {
+            const container = document.getElementById('particles');
+            const particleCount = 30;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+
+                const size = Math.random() * 60 + 20;
+                const startX = Math.random() * 100;
+                const duration = Math.random() * 20 + 15;
+                const delay = Math.random() * 5;
+
+                particle.style.cssText = `
+                    width: ${size}px;
+                    height: ${size}px;
+                    left: ${startX}%;
+                    animation-duration: ${duration}s;
+                    animation-delay: ${delay}s;
+                `;
+
+                container.appendChild(particle);
+            }
+        }
+        createParticles();
+
+        // ========== Session Dropdown ==========
+        function toggleDropdown() {
+            const dropdown = document.getElementById('sessionDropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('sessionDropdown');
+            if (!event.target.closest('.logout-dropdown') && dropdown) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // ========== Video Player with Token Security ==========
+        let player = null;
+        let streamToken = null;
+        let tokenRefreshInterval = null;
+
+        async function fetchStreamToken() {
+            try {
+                const response = await fetch('/api/majlis/stream-token', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch stream token');
+                }
+
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error fetching stream token:', error);
+                return null;
+            }
+        }
+
+        async function initializeStream() {
+            const loadingMessage = document.getElementById('loadingMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const videoElement = document.getElementById('liveStream');
+
+            try {
+                // Fetch secure token
+                const tokenData = await fetchStreamToken();
+
+                if (!tokenData || !tokenData.stream_url) {
+                    throw new Error('Invalid stream token response');
+                }
+
+                streamToken = tokenData.token;
+                const streamUrl = tokenData.stream_url;
+
+                // Hide loading, show video
+                loadingMessage.style.display = 'none';
+                videoElement.style.display = 'block';
+
+                // Initialize Video.js player
+                player = videojs('liveStream', {
+                    controls: true,
+                    autoplay: true,
+                    preload: 'auto',
+                    fluid: true,
+                    liveui: true,
+                    html5: {
+                        vhs: {
+                            withCredentials: false,
+                            overrideNative: true
+                        },
+                        nativeAudioTracks: false,
+                        nativeVideoTracks: false
+                    }
+                });
+
+                // Load stream with token
+                player.src({
+                    src: streamUrl,
+                    type: 'application/x-mpegURL'
+                });
+
+                // Error handling
+                player.on('error', function() {
+                    const error = player.error();
+                    console.error('Player error:', error);
+
+                    videoElement.style.display = 'none';
+                    errorMessage.style.display = 'block';
+                    showNotification('Stream playback error. Retrying...', 'error');
+
+                    // Retry after 5 seconds
+                    setTimeout(initializeStream, 5000);
+                });
+
+                // Stream loaded successfully
+                player.on('loadedmetadata', function() {
+                    console.log('Stream loaded successfully');
+                    showNotification('Connected to live stream', 'success');
+                });
+
+                // Token refresh every 20 hours (before 24hr expiry)
+                tokenRefreshInterval = setInterval(async () => {
+                    console.log('Refreshing stream token...');
+                    const newTokenData = await fetchStreamToken();
+                    if (newTokenData && newTokenData.stream_url) {
+                        streamToken = newTokenData.token;
+                        // Update source with new token
+                        player.src({
+                            src: newTokenData.stream_url,
+                            type: 'application/x-mpegURL'
+                        });
+                        showNotification('Stream token refreshed', 'info');
+                    }
+                }, 20 * 60 * 60 * 1000); // 20 hours
+
+            } catch (error) {
+                console.error('Stream initialization error:', error);
+                loadingMessage.style.display = 'none';
+                errorMessage.style.display = 'block';
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initializeStream);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (player) {
+                player.dispose();
+            }
+            if (tokenRefreshInterval) {
+                clearInterval(tokenRefreshInterval);
+            }
+        });
+
+        // Disable right-click and developer tools
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                (e.ctrlKey && e.shiftKey && e.key === 'C') ||
+                (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Prevent video URL extraction attempts
+        document.addEventListener('DOMContentLoaded', function() {
+            // Override console methods to prevent URL logging
+            const noop = function() {};
+            if (typeof console !== 'undefined') {
+                ['log', 'debug', 'info', 'warn', 'error'].forEach(method => {
+                    const original = console[method];
+                    console[method] = function() {
+                        // Filter out any video URL leaks
+                        const args = Array.from(arguments).map(arg => {
+                            if (typeof arg === 'string' && (arg.includes('.m3u8') || arg.includes('token='))) {
+                                return '[REDACTED]';
+                            }
+                            return arg;
+                        });
+                        original.apply(console, args);
+                    };
+                });
+            }
+        });
+
+        // ========== WebSocket Real-Time Connection ==========
+        const script = document.createElement('script');
+        script.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
+        script.onload = function() {
+            console.log('Socket.IO client loaded');
+
+            const socket = io({
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5
+            });
+
+            socket.on('connect', function() {
+                console.log('WebSocket connected');
+                showNotification('Connected to live updates', 'success');
+            });
+
+            socket.on('connection_established', function(data) {
+                console.log('WebSocket authenticated:', data);
+            });
+
+            socket.on('disconnect', function() {
+                console.log('WebSocket disconnected');
+                showNotification('Disconnected from server', 'warning');
+            });
+
+            socket.on('reconnect', function() {
+                console.log('WebSocket reconnected');
+                showNotification('Reconnected successfully', 'success');
+            });
+
+            socket.on('session_expired', function(data) {
+                alert(data.message);
+                window.location.href = data.redirect;
+            });
+
+            socket.on('admin_message', function(data) {
+                showNotification(data.message, 'info', 10000);
+            });
+
+            socket.on('notification', function(data) {
+                showNotification(data.message, 'info', 5000);
+            });
+
+            socket.on('webinar_updated', function(data) {
+                showNotification('Stream settings updated. Refreshing...', 'info');
+                setTimeout(() => window.location.reload(), 2000);
+            });
+
+            socket.on('force_logout', function(data) {
+                alert(data.message || 'You have been logged out by an administrator.');
+                window.location.href = "{{ url_for('logout') }}";
+            });
+
+            // Heartbeat every 30 seconds
+            setInterval(function() {
+                socket.emit('heartbeat', {
+                    timestamp: new Date().toISOString()
+                });
+            }, 30000);
+
+            socket.on('heartbeat_ack', function(data) {
+                console.log('Heartbeat acknowledged:', data.status);
+            });
+
+            socket.on('error', function(error) {
+                console.error('WebSocket error:', error);
+                showNotification('Connection error occurred', 'error');
+            });
+        };
+        document.head.appendChild(script);
+
+        // Notification system
+        function showNotification(message, type = 'info', duration = 5000) {
+            const notification = document.createElement('div');
+            notification.className = `websocket-notification ${type}`;
+
+            const icon = type === 'success' ? 'check-circle' :
+                        type === 'error' ? 'exclamation-circle' :
+                        type === 'warning' ? 'exclamation-triangle' :
+                        'info-circle';
+
+            notification.innerHTML = `
+                <i class="fas fa-${icon}"></i>
+                <span>${message}</span>
+            `;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideInRight 0.3s ease reverse';
+                setTimeout(() => notification.remove(), 300);
+            }, duration);
+        }
+
+        console.log('Ratlam Relay Centre - Majlis RTMP Live Stream initialized');
+    </script>
+</body>
+</html>
+'''
+
 # No Webinar Template (keeping existing)
 ROLE_SELECTION_TEMPLATE = '''
 <!DOCTYPE html>
@@ -4715,31 +5555,75 @@ def webinar():
     else:
         return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=user_id, session_token=session_token, **webinar_data)
 
+@app.route('/api/majlis/stream-token')
+def get_majlis_stream_token():
+    """Generate secure token for Majlis RTMP streaming - API endpoint"""
+    if 'session_token' not in request.cookies:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    session_token = request.cookies.get('session_token')
+    session_info = verify_session(session_token)
+
+    if not session_info or session_info.get('user_type') != 'majlis':
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    user_id = session_info['user_id']
+
+    # Generate secure token based on user_id and timestamp
+    # Token format: majlis_{user_id}_{timestamp_hash}
+    import time
+    timestamp = str(int(time.time()))
+    token_string = f"majlis_{user_id}_{timestamp}"
+    token_hash = hashlib.sha256(token_string.encode()).hexdigest()[:16]
+    secure_token = f"majlis_{user_id}_{token_hash}"
+
+    # Store token in Redis with 24-hour expiry (same as session)
+    token_key = f"stream_token:{secure_token}"
+    redis_client.setex(token_key, 86400, user_id)
+
+    return jsonify({
+        'token': secure_token,
+        'stream_url': f"{MAJLIS_RTMP_URL}/stream/stream.m3u8?token={secure_token}" if MAJLIS_RTMP_URL else None,
+        'expires_in': 86400
+    })
+
 @app.route('/majlis')
 def majlis():
     """Webinar page for Majlis users - requires valid Majlis session"""
     if 'session_token' not in request.cookies:
         return redirect(url_for('index'))
-    
+
     session_token = request.cookies.get('session_token')
     session_info = verify_session(session_token)
-    
+
     if not session_info:
         response = redirect(url_for('index'))
         response.delete_cookie('session_token')
         return response
-    
+
     # Ensure this is a Majlis user
     if session_info.get('user_type') != 'majlis':
         return redirect(url_for('index'))
-    
+
     user_id = session_info['user_id']
-    webinar_data = load_majlis_webinar_settings_with_time_check()
-    
-    if webinar_data.get('no_webinar', False):
-        return render_template_string(NO_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token)
+
+    # Check if RTMP streaming is enabled
+    if MAJLIS_RTMP_URL:
+        # Use RTMP live streaming
+        return render_template_string(
+            MAJLIS_RTMP_TEMPLATE,
+            user_id=user_id,
+            session_token=session_token,
+            rtmp_url=MAJLIS_RTMP_URL
+        )
     else:
-        return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=user_id, session_token=session_token, **webinar_data)
+        # Fallback to YouTube embed
+        webinar_data = load_majlis_webinar_settings_with_time_check()
+
+        if webinar_data.get('no_webinar', False):
+            return render_template_string(NO_WEBINAR_TEMPLATE, its_id=user_id, session_token=session_token)
+        else:
+            return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=user_id, session_token=session_token, **webinar_data)
 
 @app.route('/select_role', methods=['POST'])
 def select_role():

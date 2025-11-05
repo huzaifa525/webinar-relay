@@ -69,6 +69,77 @@ The webinar player includes professional auto-hiding controls:
 - **Smooth Transitions**: CSS animations for fade in/out (0.3s ease)
 - **Mobile Optimized**: Touch-friendly with responsive button sizing
 
+### RTMP Live Streaming Integration (Majlis Only)
+The application supports self-hosted RTMP live streaming for Majlis users with secure token-based authentication.
+
+#### Architecture
+- **Environment Variable**: `MAJLIS_RTMP_URL` - URL of external RTMP streaming server (optional)
+- **Conditional Rendering**: If `MAJLIS_RTMP_URL` is set, Majlis page uses RTMP stream; otherwise falls back to YouTube embed
+- **Token Generation**: Secure tokens generated per-user for stream access
+- **Video Player**: Video.js with HLS.js for professional live streaming playback
+
+#### Token Security
+- **Format**: `majlis_{user_id}_{sha256_hash}` (e.g., `majlis_12345678_a1b2c3d4e5f6g7h8`)
+- **Generation**: Based on user_id + timestamp for uniqueness
+- **Storage**: Redis with 24-hour expiry (`stream_token:{token}` → `user_id`)
+- **Refresh**: Automatic token refresh every 20 hours (before 24hr expiry)
+- **Validation**: Every HLS request (.m3u8 playlist and .ts segments) requires valid token
+
+#### API Endpoints
+- **`GET /api/majlis/stream-token`**: Generate secure token for authenticated Majlis users
+  - **Authentication**: Requires valid Majlis session cookie
+  - **Response**: JSON with `token`, `stream_url`, `expires_in` (86400 seconds)
+  - **Usage**: Called by MAJLIS_RTMP_TEMPLATE on page load and every 20 hours
+
+#### Security Features
+- **URL Obfuscation**: Console methods overridden to prevent URL logging/extraction
+- **Right-Click Disabled**: Context menu and developer tools blocked
+- **Token in URL**: Stream URL includes token parameter, validated on every request
+- **No Direct Access**: RTMP server's Nginx config blocks direct HLS access (internal directive)
+- **Session Bound**: Tokens tied to active Majlis sessions, invalidated on logout
+
+#### Templates
+- **MAJLIS_RTMP_TEMPLATE**: Full-featured live streaming template with:
+  - Video.js 8.10.0 player with HLS support
+  - Custom gold-themed player controls matching app design
+  - Loading, error, and success states
+  - WebSocket integration for real-time notifications
+  - Automatic token fetching and refresh
+  - LIVE indicator with pulsing animation
+  - Responsive design for mobile devices
+
+#### RTMP Server Integration
+The separate `live-stream/` folder contains a complete self-hosted RTMP → HLS server:
+- **Dockerfile**: Ubuntu + Nginx-RTMP + Flask
+- **nginx.conf**: RTMP ingest on port 1935, HLS output with token validation
+- **app.py**: Flask token validation proxy (validates tokens from main app's Redis)
+- **Deployment**: Designed for Railway/Docker with OBS Studio streaming
+
+#### Configuration
+Set the environment variable in production:
+```bash
+export MAJLIS_RTMP_URL="https://your-rtmp-server.railway.app"
+# or in Railway dashboard: MAJLIS_RTMP_URL = https://your-rtmp-server.railway.app
+```
+
+If not set, Majlis users see YouTube embed (fallback behavior).
+
+#### Redis Keys Used
+- `stream_token:{token}` → `user_id`, TTL 86400 seconds (24 hours)
+- Main session keys: `sessions:{session_token}` (validates user before token generation)
+
+#### Workflow
+1. Majlis user logs in with valid ID
+2. System checks `MAJLIS_RTMP_URL` environment variable
+3. If set: Render MAJLIS_RTMP_TEMPLATE
+4. Template JavaScript calls `/api/majlis/stream-token`
+5. Backend validates session, generates secure token, stores in Redis
+6. Frontend receives token + stream URL
+7. Video.js initializes with HLS stream URL (includes token parameter)
+8. Every HLS request validated by RTMP server's Flask app
+9. Token auto-refreshes every 20 hours to prevent expiration
+10. On logout, session deleted (tokens remain valid until Redis TTL expires)
+
 ### WebSocket Real-Time Features
 The application uses **Flask-SocketIO** with **eventlet** for real-time bidirectional communication:
 
@@ -240,8 +311,16 @@ The application **requires** environment variables for database and Redis connec
   - Example (Upstash): `rediss://default:password@host.upstash.io:6379`
   - Example (Railway): `redis://default:password@host:port`
 
+**Optional Environment Variables:**
+- `MAJLIS_RTMP_URL`: External RTMP streaming server URL (OPTIONAL)
+  - Format: `https://your-rtmp-server.railway.app` (no trailing slash)
+  - If set: Majlis users see RTMP live stream with Video.js player
+  - If not set: Majlis users see YouTube embed (fallback)
+  - Used by: `/majlis` route and `/api/majlis/stream-token` endpoint
+  - Example: `https://majlis-stream.railway.app`
+
 **Important:**
-The application will fail to start if these environment variables are not set. There are no hardcoded fallback credentials.
+The application will fail to start if required environment variables (DATABASE_URL, REDIS_URL) are not set. There are no hardcoded fallback credentials.
 
 ### Database Connection (PostgreSQL)
 Connection pooling configuration:
