@@ -1117,7 +1117,7 @@ LOGIN_TEMPLATE = '''
                     required
                 >
             </div>
-            <button type="submit" class="login-button">Access Webinar</button>
+            <button type="submit" class="login-button">Access Live</button>
         </form>
 
         <div class="admin-link">
@@ -4088,7 +4088,7 @@ ROLE_SELECTION_TEMPLATE = '''
         <div class="selection-header">
             <h1 class="selection-title">Select Your Portal</h1>
             <p class="selection-subtitle">
-                Your ID is registered for both ITS and Majlis portals.<br>
+                Your ID is registered for both Asbaq and Majlis portals.<br>
                 Please select which portal you would like to access:
             </p>
             <div class="user-id-badge">ID: {{ user_id }}</div>
@@ -4100,17 +4100,17 @@ ROLE_SELECTION_TEMPLATE = '''
             <div class="portal-options">
                 <button type="submit" name="role" value="its" class="portal-button">
                     <div class="portal-icon">🕌</div>
-                    <div class="portal-name">ITS Webinar Portal</div>
+                    <div class="portal-name">Asbaq</div>
                     <div class="portal-description">
-                        Access the ITS community webinar stream and content
+                        Access Live stream and content
                     </div>
                 </button>
 
                 <button type="submit" name="role" value="majlis" class="portal-button">
                     <div class="portal-icon">📿</div>
-                    <div class="portal-name">Majlis Portal</div>
+                    <div class="portal-name">Majlis</div>
                     <div class="portal-description">
-                        Access the Majlis community webinar stream and content
+                        Access Live stream and content
                     </div>
                 </button>
             </div>
@@ -4641,7 +4641,7 @@ def index():
         user_id = request.form.get('its_id', '').strip()  # Field name kept as its_id for backward compatibility
 
         if not user_id or len(user_id) != 8 or not user_id.isdigit():
-            return render_template_string(LOGIN_TEMPLATE, error="Please enter a valid 8-digit ITS/Majlis ID.")
+            return render_template_string(LOGIN_TEMPLATE, error="Please enter a valid 8-digit Asbaq/Majlis ID.")
 
         # Check if ID exists in both ITS and Majlis tables
         is_its_valid = is_its_id_valid(user_id)
@@ -4657,7 +4657,7 @@ def index():
             # Check if user is already logged in on another device
             if is_user_already_logged_in(user_id, 'its'):
                 print(f"Blocked login attempt for ITS user {user_id} - already logged in")
-                return render_template_string(LOGIN_TEMPLATE, error="This ITS ID is already logged in on another device. Only one device is allowed at a time. Contact admin if you need to force logout.")
+                return render_template_string(LOGIN_TEMPLATE, error="This Asbaq ID is already logged in on another device. Only one device is allowed at a time. Contact admin if you need to force logout.")
 
             session_token = create_session(user_id, 'its')
             if not session_token:
@@ -5297,7 +5297,7 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
 
         <div class="tab-nav">
             <button class="tab-btn active" onclick="showTab('its-tab')">
-                <i class="fas fa-users"></i> ITS Management
+                <i class="fas fa-users"></i> Asbaq Management
             </button>
             <button class="tab-btn" onclick="showTab('majlis-tab')">
                 <i class="fas fa-crown"></i> Majlis Management
@@ -5310,25 +5310,25 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
         <div id="its-tab" class="tab-content active">
             <div class="dashboard-grid">
                 <div class="card">
-                    <h3 class="card-title"><i class="fas fa-user-plus"></i> Add ITS ID</h3>
+                    <h3 class="card-title"><i class="fas fa-user-plus"></i> Add Asbaq ID</h3>
                     <form method="POST" action="{{ url_for('admin_add_its') }}">
                         <div class="form-group">
-                            <label for="its_id">ITS ID (8 digits):</label>
-                            <input type="text" id="its_id" name="its_id" pattern="[0-9]{8}" required 
+                            <label for="its_id">Asbaq ID (8 digits):</label>
+                            <input type="text" id="its_id" name="its_id" pattern="[0-9]{8}" required
                                    placeholder="12345678" maxlength="8">
                         </div>
                         <button type="submit" class="btn btn-success">
-                            <i class="fas fa-plus"></i> Add ITS ID
+                            <i class="fas fa-plus"></i> Add Asbaq ID
                         </button>
                     </form>
                 </div>
 
                 <div class="card">
-                    <h3 class="card-title"><i class="fas fa-upload"></i> Bulk Add ITS IDs</h3>
+                    <h3 class="card-title"><i class="fas fa-upload"></i> Bulk Add Asbaq IDs</h3>
                     <form method="POST" action="{{ url_for('admin_add_bulk_its') }}">
                         <div class="form-group">
-                            <label for="bulk_its_ids">ITS IDs (one per line or comma separated):</label>
-                            <textarea id="bulk_its_ids" name="bulk_its_ids" rows="5" 
+                            <label for="bulk_its_ids">Asbaq IDs (one per line or comma separated):</label>
+                            <textarea id="bulk_its_ids" name="bulk_its_ids" rows="5"
                                       placeholder="12345678,87654321,11223344..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-success">
@@ -5338,7 +5338,7 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
                 </div>
 
                 <div class="card">
-                    <h3 class="card-title"><i class="fas fa-video"></i> ITS Webinar Settings</h3>
+                    <h3 class="card-title"><i class="fas fa-video"></i> Asbaq Live Settings</h3>
                     <form method="POST" action="{{ url_for('admin_update_webinar_settings') }}">
                         <div class="form-group">
                             <label for="youtube_video_id">YouTube Video ID:</label>
@@ -5404,8 +5404,8 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
                             <span>{{ id }}</span>
                             <form method="POST" action="{{ url_for('admin_delete_its') }}" style="display: inline;">
                                 <input type="hidden" name="its_id" value="{{ id }}">
-                                <button type="submit" class="btn btn-danger btn-sm" 
-                                        onclick="return confirm('Delete ITS ID {{ id }}?')">
+                                <button type="submit" class="btn btn-danger btn-sm"
+                                        onclick="return confirm('Delete Asbaq ID {{ id }}?')">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
@@ -5413,9 +5413,9 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
                         {% endfor %}
                     </div>
                     <form method="POST" action="{{ url_for('admin_delete_all_its') }}">
-                        <button type="submit" class="btn btn-danger" 
-                                onclick="return confirm('Delete ALL ITS IDs?')">
-                            <i class="fas fa-trash-alt"></i> Delete All ITS IDs
+                        <button type="submit" class="btn btn-danger"
+                                onclick="return confirm('Delete ALL Asbaq IDs?')">
+                            <i class="fas fa-trash-alt"></i> Delete All Asbaq IDs
                         </button>
                     </form>
                 </div>
