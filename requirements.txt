@@ -3,6 +3,7 @@ Flask-WTF
 Flask-Compress
 gunicorn
 flask-socketio
+eventlet
 requests
 psycopg2-binary
 SQLAlchemy

@@ -27,20 +27,131 @@ This is a Flask web application called "Ratlam Relay Centre - Webinar Access Por
 
 ### Key Routes Structure
 - `/` - Home page with ITS/Majlis ID login form (checks both ID types)
+- `/select_role` - Role selection page for dual-registered users (POST only)
 - `/webinar` - Protected webinar viewing page for ITS users
-- `/majlis` - Protected webinar viewing page for Majlis users  
+- `/majlis` - Protected webinar viewing page for Majlis users
 - `/admin/*` - Admin panel routes with separate tabs for ITS/Majlis management
 - `/api/status` - JSON API endpoint for session status checks
 - `/health` - Health check endpoint
 
 ### Authentication Flow
 1. User enters 8-digit ID on home page
-2. System checks ITS ID cache first (Redis lookup)
-3. If not found, checks Majlis ID cache (Redis lookup)
-4. If ITS ID found: redirect to `/webinar`
-5. If Majlis ID found: redirect to `/majlis`
-6. If neither found: access denied
-7. Creates Redis session with TTL (no database session storage)
+2. System checks both ITS ID cache and Majlis ID cache (Redis lookups)
+3. **Dual-Access Scenario**: If ID exists in BOTH tables:
+   - Show role selection UI with two buttons (ITS Portal / Majlis Portal)
+   - User chooses which portal to access
+   - System creates session with selected user_type
+   - Redirect to appropriate portal
+4. **Single-Access Scenario**: If ID exists in only one table:
+   - If ITS ID found: redirect to `/webinar`
+   - If Majlis ID found: redirect to `/majlis`
+5. If neither found: access denied
+6. Creates Redis session with TTL (no database session storage)
+
+### Dual-Access User Support
+The application supports users registered in **both** ITS and Majlis tables:
+- **Detection**: Login checks both ID caches simultaneously
+- **User Choice**: Role selection UI allows user to choose portal access
+- **Session Isolation**: Each login creates a single-portal session (ITS or Majlis)
+- **Device Restrictions**: "One device per ID" rule applies separately to each portal access
+- **Admin Flexibility**: Admins can intentionally register the same ID in both tables for privileged users
+
+### Video Player Features
+The webinar player includes professional auto-hiding controls:
+- **Auto-Hide Controls**: Player controls (volume, fullscreen) automatically fade out after 3 seconds of inactivity
+- **Smart Visibility**: Controls reappear on:
+  - Mouse movement over video
+  - Mouse hover on video container
+  - Click/tap on video
+  - Touch events (mobile support)
+- **Persistent on Hover**: Controls stay visible when hovering directly over them
+- **Fullscreen Exception**: Controls remain visible in fullscreen mode
+- **Smooth Transitions**: CSS animations for fade in/out (0.3s ease)
+- **Mobile Optimized**: Touch-friendly with responsive button sizing
+
+### WebSocket Real-Time Features
+The application uses **Flask-SocketIO** with **eventlet** for real-time bidirectional communication:
+
+#### Connection Management
+- **Automatic Connection**: All users (ITS/Majlis/Admin) automatically connect via WebSocket on page load
+- **Room-Based Broadcasting**: Users join specific rooms based on their type and ID
+  - `user_{user_id}_{user_type}` - Individual user room for targeted notifications
+  - `type_{user_type}` - Type-specific room (all ITS or all Majlis users)
+  - `all_users` - Global room for broadcasting to everyone
+  - `admin_room` - Admin-only room for control panel updates
+
+#### Real-Time Features
+- **Session Monitoring**: Server detects expired sessions and notifies clients to logout
+- **Heartbeat System**: 30-second intervals verify connection and session validity
+- **Automatic Inactivity Logout**: Users inactive for 1+ hour are automatically force-logged out
+- **Activity Tracking**: Redis tracks last WebSocket activity (connect, disconnect, heartbeat)
+- **Background Monitoring**: Checks every 5 minutes for inactive users
+- **Admin Broadcasts**: Admins can send messages to all users or specific groups
+- **Webinar Updates**: Automatic page refresh when webinar settings change
+- **Force Logout**: Admins can remotely logout specific users
+- **Connection Status**: Visual notifications for connect/disconnect events
+- **Live Statistics**: Real-time user count updates in admin panel
+
+#### WebSocket Events (Server → Client)
+- `connection_established` - Confirms WebSocket connection with user details
+- `session_expired` - Forces logout when session expires
+- `admin_message` - Admin broadcast messages to users
+- `notification` - Generic notifications
+- `webinar_updated` - Webinar settings changed, triggers reload
+- `force_logout` - Admin-initiated logout
+- `heartbeat_ack` - Confirms heartbeat received
+- `user_connected` / `user_disconnected` - Admin notifications of user activity
+- `stats_update` - Real-time session statistics
+
+#### WebSocket Events (Client → Server)
+- `heartbeat` - Client keepalive with session verification
+- `admin_broadcast` - Admin sends message to users
+- `request_stats` - Request current active session counts
+
+#### Technology Stack
+- **Flask-SocketIO 5.x**: WebSocket server implementation
+- **Socket.IO Client 4.5.4**: JavaScript client (loaded via CDN)
+- **Eventlet**: Async worker for production deployment
+- **Gunicorn with eventlet worker**: Production WSGI server
+
+#### Deployment Configuration
+- **Procfile**: Uses `gunicorn --worker-class eventlet -w 1` for WebSocket support
+- **Single Worker**: Required for Socket.IO session affinity
+- **Graceful Degradation**: Falls back to long-polling if WebSocket unavailable
+
+#### Automatic Inactivity Logout System
+**Problem**: Users who close their browser or lose connection remain logged in, blocking other devices.
+
+**Solution**: Background monitoring with automatic force logout after 1 hour of inactivity.
+
+**How It Works**:
+1. **Activity Tracking**: Every WebSocket event (connect, disconnect, heartbeat) updates `activity:{user_id}:{user_type}` in Redis
+2. **Background Task**: Runs every 5 minutes checking all active sessions
+3. **Inactivity Check**: Compares current time vs. last activity timestamp
+4. **Auto-Logout**: If inactive > 1 hour:
+   - Delete session from Redis (`sessions:{token}`)
+   - Send WebSocket `force_logout` event to user (if still connected)
+   - Delete activity tracker (`activity:{user_id}:{user_type}`)
+   - Log the action with inactive duration
+
+**Redis Keys Used**:
+- `activity:{user_id}:{user_type}` → ISO timestamp, TTL 2 hours
+- Updates on: WebSocket connect, disconnect, heartbeat (every 30s)
+
+**Example Timeline**:
+```
+10:00 AM - User connects → activity:12345678:its = "2025-01-05T10:00:00"
+10:30 AM - Heartbeat received → activity updated to "2025-01-05T10:30:00"
+10:35 AM - User closes browser (no explicit logout)
+11:05 AM - Background check runs: Last activity = 10:30 AM (35 min ago) → Keep session
+11:35 AM - Background check runs: Last activity = 10:30 AM (1 hr 5 min ago) → FORCE LOGOUT
+```
+
+**Benefits**:
+- Prevents "stuck" sessions from blocking device access
+- Automatic cleanup without manual admin intervention
+- Works even if user loses connection without logout
+- Configurable threshold (currently 1 hour)
 
 ### Resource Optimization Strategy
 - **Redis-First Architecture**: All session operations use Redis with TTL
@@ -48,13 +159,16 @@ This is a Flask web application called "Ratlam Relay Centre - Webinar Access Por
 - **Connection Pooling**: Max 3 PostgreSQL connections configured
 - **Cache Invalidation**: Manual refresh only when admin makes changes
 - **No Session Cleanup**: Redis TTL handles automatic expiration
+- **WebSocket Efficiency**: Single persistent connection per user instead of HTTP polling
 
 ## Development Commands
 
 ### Running the Application
 ```bash
 # Install dependencies
-pip install redis flask-sqlalchemy psycopg2-binary
+pip install -r requirements.txt
+# Or manually:
+pip install redis flask-sqlalchemy psycopg2-binary flask-socketio eventlet
 
 # Set environment variables (required for database and Redis connections)
 export DATABASE_URL="postgresql://user:password@host:port/database"
