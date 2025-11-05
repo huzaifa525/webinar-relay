@@ -22,6 +22,7 @@ from sqlalchemy.pool import QueuePool
 import json
 import redis
 from flask_compress import Compress
+from flask_socketio import SocketIO, emit, join_room, leave_room, disconnect
 
 app = Flask(__name__)
 app.secret_key = 'Huzaifa53'
@@ -29,6 +30,17 @@ app.secret_key = 'Huzaifa53'
 # Enable gzip compression for all responses
 compress = Compress()
 compress.init_app(app)
+
+# Initialize SocketIO with eventlet for production-ready async support
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode='eventlet',
+    logger=False,
+    engineio_logger=False,
+    ping_timeout=60,
+    ping_interval=25
+)
 
 # Flask performance configurations
 app.config['COMPRESS_MIMETYPES'] = ['text/html', 'text/css', 'text/xml', 'application/json', 'application/javascript']
@@ -1753,6 +1765,34 @@ WEBINAR_TEMPLATE_IMPROVED = '''
             align-items: center;
             z-index: 15;
             pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Auto-hide controls when inactive */
+        .video-container.controls-hidden .control-group {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Keep controls visible when hovering over them */
+        .control-group:hover {
+            opacity: 1 !important;
+        }
+
+        /* Show controls when video container is hovered */
+        .video-container:hover .control-group {
+            opacity: 1;
+        }
+
+        /* Also show custom play button on hover */
+        .video-container.controls-hidden .custom-play-button {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .video-container:hover .custom-play-button {
+            opacity: 1;
         }
 
         .control-section {
@@ -2222,6 +2262,68 @@ WEBINAR_TEMPLATE_IMPROVED = '''
                 volumeIcon: !!volumeIcon,
                 fullscreenIcon: !!fullscreenIcon
             });
+
+            // ========== Auto-Hide Player Controls ==========
+            let controlsHideTimer = null;
+            const CONTROLS_HIDE_DELAY = 3000; // 3 seconds of inactivity
+
+            function showControls() {
+                if (videoContainer) {
+                    videoContainer.classList.remove('controls-hidden');
+                }
+            }
+
+            function hideControls() {
+                if (videoContainer && !isFullscreen) {
+                    // Only hide if not hovering over video container
+                    const isHoveringContainer = videoContainer.matches(':hover');
+                    if (!isHoveringContainer) {
+                        videoContainer.classList.add('controls-hidden');
+                    }
+                }
+            }
+
+            function resetControlsTimer() {
+                // Clear existing timer
+                if (controlsHideTimer) {
+                    clearTimeout(controlsHideTimer);
+                }
+
+                // Show controls
+                showControls();
+
+                // Set new timer to hide controls
+                controlsHideTimer = setTimeout(hideControls, CONTROLS_HIDE_DELAY);
+            }
+
+            // Show controls on mouse movement over video container
+            if (videoContainer) {
+                videoContainer.addEventListener('mousemove', resetControlsTimer);
+                videoContainer.addEventListener('mouseenter', resetControlsTimer);
+                videoContainer.addEventListener('touchstart', resetControlsTimer);
+                videoContainer.addEventListener('click', resetControlsTimer);
+
+                // Prevent hiding when hovering over controls
+                const controlGroup = videoContainer.querySelector('.control-group');
+                if (controlGroup) {
+                    controlGroup.addEventListener('mouseenter', function() {
+                        if (controlsHideTimer) {
+                            clearTimeout(controlsHideTimer);
+                        }
+                        showControls();
+                    });
+
+                    controlGroup.addEventListener('mouseleave', function() {
+                        resetControlsTimer();
+                    });
+                }
+            }
+
+            // Start the auto-hide timer initially
+            resetControlsTimer();
+
+            console.log('Auto-hide controls initialized');
+            // ========== End Auto-Hide Controls ==========
 
             // Hide loading overlay after iframe loads
             if (videoFrame) {
@@ -3583,11 +3685,11 @@ MAJLIS_WEBINAR_TEMPLATE = '''
         
         // Session monitoring removed to reduce server costs
         // Session will be checked on page navigation and user activity
-        
+
         // Disable right-click and dev tools
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'F12' || 
+            if (e.key === 'F12' ||
                 (e.ctrlKey && e.shiftKey && e.key === 'I') ||
                 (e.ctrlKey && e.shiftKey && e.key === 'C') ||
                 (e.ctrlKey && e.key === 'U')) {
@@ -3595,7 +3697,168 @@ MAJLIS_WEBINAR_TEMPLATE = '''
                 return false;
             }
         });
+
+        // ========== WebSocket Real-Time Connection ==========
+        // Load Socket.IO client library
+        const script = document.createElement('script');
+        script.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
+        script.onload = function() {
+            console.log('Socket.IO client loaded');
+
+            // Initialize WebSocket connection
+            const socket = io({
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5
+            });
+
+            // Connection established
+            socket.on('connect', function() {
+                console.log('WebSocket connected');
+                showNotification('Connected to live updates', 'success');
+            });
+
+            // Connection established with user info
+            socket.on('connection_established', function(data) {
+                console.log('WebSocket authenticated:', data);
+            });
+
+            // Handle disconnection
+            socket.on('disconnect', function() {
+                console.log('WebSocket disconnected');
+                showNotification('Disconnected from server', 'warning');
+            });
+
+            // Reconnection attempt
+            socket.on('reconnect_attempt', function() {
+                console.log('Attempting to reconnect...');
+            });
+
+            // Successfully reconnected
+            socket.on('reconnect', function() {
+                console.log('WebSocket reconnected');
+                showNotification('Reconnected successfully', 'success');
+            });
+
+            // Session expired notification
+            socket.on('session_expired', function(data) {
+                alert(data.message);
+                window.location.href = data.redirect;
+            });
+
+            // Admin broadcast message
+            socket.on('admin_message', function(data) {
+                showNotification(data.message, 'info', 10000);
+                console.log('Admin message:', data.message);
+            });
+
+            // Generic notification
+            socket.on('notification', function(data) {
+                showNotification(data.message, 'info', 5000);
+                console.log('Notification:', data);
+            });
+
+            // Webinar settings updated
+            socket.on('webinar_updated', function(data) {
+                showNotification('Webinar settings have been updated. Refreshing...', 'info');
+                setTimeout(() => window.location.reload(), 2000);
+            });
+
+            // Force logout notification
+            socket.on('force_logout', function(data) {
+                alert(data.message || 'You have been logged out by an administrator.');
+                window.location.href = "{{ url_for('logout') }}";
+            });
+
+            // Heartbeat to keep connection alive and verify session
+            setInterval(function() {
+                socket.emit('heartbeat', {
+                    timestamp: new Date().toISOString()
+                });
+            }, 30000); // Every 30 seconds
+
+            // Heartbeat acknowledgment
+            socket.on('heartbeat_ack', function(data) {
+                console.log('Heartbeat acknowledged:', data.status);
+            });
+
+            // Error handling
+            socket.on('error', function(error) {
+                console.error('WebSocket error:', error);
+                showNotification('Connection error occurred', 'error');
+            });
+
+            // Notification system
+            function showNotification(message, type = 'info', duration = 5000) {
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.className = 'websocket-notification ' + type;
+                notification.textContent = message;
+
+                // Append to body
+                document.body.appendChild(notification);
+
+                // Show with animation
+                setTimeout(() => notification.classList.add('show'), 100);
+
+                // Auto-hide after duration
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 300);
+                }, duration);
+            }
+
+            console.log('WebSocket client initialized successfully');
+        };
+        document.head.appendChild(script);
     </script>
+
+    <style>
+        /* WebSocket Notification Styles */
+        .websocket-notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            background: rgba(15, 20, 40, 0.95);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            max-width: 350px;
+        }
+
+        .websocket-notification.show {
+            transform: translateX(0);
+        }
+
+        .websocket-notification.success {
+            border-color: #4caf50;
+            background: rgba(76, 175, 80, 0.15);
+        }
+
+        .websocket-notification.error {
+            border-color: #f44336;
+            background: rgba(244, 67, 54, 0.15);
+        }
+
+        .websocket-notification.warning {
+            border-color: #ff9800;
+            background: rgba(255, 152, 0, 0.15);
+        }
+
+        .websocket-notification.info {
+            border-color: #d4af37;
+            background: rgba(212, 175, 55, 0.15);
+        }
+    </style>
     
     <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(9, 13, 27, 0.8); backdrop-filter: blur(10px); padding: 10px; text-align: center; font-size: 0.85rem; color: rgba(255, 255, 255, 0.65); border-top: 1px solid rgba(212, 175, 55, 0.2);">
         Developed with <span style="color: #ff4d4d; display: inline-block; animation: heartbeat 1.5s ease infinite;">♥</span> by Huzefa Nalkheda wala
@@ -3605,6 +3868,262 @@ MAJLIS_WEBINAR_TEMPLATE = '''
 '''
 
 # No Webinar Template (keeping existing)
+ROLE_SELECTION_TEMPLATE = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Portal - Access Selection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-primary: #0a3da0;
+            --brand-primary-light: #1c54c5;
+            --accent-gold: #d4af37;
+            --accent-gold-light: #f0cc50;
+            --bg-dark: #090d1b;
+            --bg-surface: #0f1428;
+            --bg-surface-light: #1a233f;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.85);
+            --text-tertiary: rgba(255, 255, 255, 0.65);
+            --gold-overlay: rgba(212, 175, 55, 0.08);
+            --gradient-gold: linear-gradient(135deg, var(--accent-gold), #a08c3a);
+            --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 16px 50px rgba(0, 0, 0, 0.3);
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --transition-normal: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background:
+                linear-gradient(135deg, rgba(9, 13, 27, 0.95) 0%, rgba(15, 20, 40, 0.9) 50%, rgba(26, 35, 63, 0.95) 100%),
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.02) 10px, rgba(255,255,255,.02) 20px);
+            min-height: 100vh;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .gradient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 15% 15%, rgba(10, 61, 160, 0.3), transparent 40%),
+                        radial-gradient(circle at 85% 85%, rgba(212, 175, 55, 0.2), transparent 40%);
+            pointer-events: none;
+        }
+
+        .selection-container {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            padding: 3rem 2.5rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.6s ease forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .selection-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .selection-title {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--gradient-gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.75rem;
+        }
+
+        .selection-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .user-id-badge {
+            display: inline-block;
+            background: rgba(212, 175, 55, 0.15);
+            color: var(--accent-gold);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            margin-top: 0.75rem;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .portal-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .portal-button {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: var(--transition-normal);
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .portal-button:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-gold);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+        }
+
+        .portal-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .portal-button:hover::before {
+            left: 100%;
+        }
+
+        .portal-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .portal-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .portal-description {
+            font-size: 0.9rem;
+            color: var(--text-tertiary);
+            line-height: 1.5;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .back-link a {
+            color: var(--accent-gold);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: var(--transition-normal);
+        }
+
+        .back-link a:hover {
+            color: var(--accent-gold-light);
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .selection-container {
+                padding: 2rem 1.5rem;
+                max-width: 95%;
+            }
+
+            .selection-title {
+                font-size: 1.5rem;
+            }
+
+            .portal-button {
+                padding: 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="gradient-bg"></div>
+
+    <div class="selection-container">
+        <div class="selection-header">
+            <h1 class="selection-title">Select Your Portal</h1>
+            <p class="selection-subtitle">
+                Your ID is registered for both ITS and Majlis portals.<br>
+                Please select which portal you would like to access:
+            </p>
+            <div class="user-id-badge">ID: {{ user_id }}</div>
+        </div>
+
+        <form method="POST" action="{{ url_for('select_role') }}">
+            <input type="hidden" name="user_id" value="{{ user_id }}">
+
+            <div class="portal-options">
+                <button type="submit" name="role" value="its" class="portal-button">
+                    <div class="portal-icon">🕌</div>
+                    <div class="portal-name">ITS Webinar Portal</div>
+                    <div class="portal-description">
+                        Access the ITS community webinar stream and content
+                    </div>
+                </button>
+
+                <button type="submit" name="role" value="majlis" class="portal-button">
+                    <div class="portal-icon">📿</div>
+                    <div class="portal-name">Majlis Portal</div>
+                    <div class="portal-description">
+                        Access the Majlis community webinar stream and content
+                    </div>
+                </button>
+            </div>
+        </form>
+
+        <div class="back-link">
+            <a href="{{ url_for('index') }}">&larr; Back to Login</a>
+        </div>
+    </div>
+</body>
+</html>
+'''
+
 NO_WEBINAR_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
@@ -4009,11 +4528,11 @@ NO_WEBINAR_TEMPLATE = '''
         
         // Session monitoring removed to reduce server costs
         // Session will be checked on page navigation and user activity
-        
+
         // Disable right-click and dev tools
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'F12' || 
+            if (e.key === 'F12' ||
                 (e.ctrlKey && e.shiftKey && e.key === 'I') ||
                 (e.ctrlKey && e.shiftKey && e.key === 'J') ||
                 (e.ctrlKey && e.key === 'U')) {
@@ -4021,6 +4540,51 @@ NO_WEBINAR_TEMPLATE = '''
                 return false;
             }
         });
+
+        // ========== WebSocket Real-Time Connection ==========
+        const wsScript = document.createElement('script');
+        wsScript.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
+        wsScript.onload = function() {
+            const socket = io({
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5
+            });
+
+            socket.on('connect', () => console.log('WebSocket connected'));
+            socket.on('connection_established', data => console.log('Authenticated:', data));
+
+            // Webinar became available - reload page
+            socket.on('webinar_updated', function(data) {
+                alert('A webinar stream is now available! The page will refresh.');
+                setTimeout(() => window.location.reload(), 1000);
+            });
+
+            // Admin message
+            socket.on('admin_message', function(data) {
+                alert('Admin: ' + data.message);
+            });
+
+            // Session expired
+            socket.on('session_expired', function(data) {
+                alert(data.message);
+                window.location.href = data.redirect;
+            });
+
+            // Force logout
+            socket.on('force_logout', function(data) {
+                alert(data.message || 'You have been logged out by an administrator.');
+                window.location.href = "{{ url_for('logout') }}";
+            });
+
+            // Heartbeat every 30 seconds
+            setInterval(() => socket.emit('heartbeat', { timestamp: new Date().toISOString() }), 30000);
+            socket.on('heartbeat_ack', data => console.log('Heartbeat:', data.status));
+
+            console.log('WebSocket initialized');
+        };
+        document.head.appendChild(wsScript);
     </script>
 </body>
 </html>
@@ -4075,42 +4639,51 @@ def index():
     
     if request.method == 'POST':
         user_id = request.form.get('its_id', '').strip()  # Field name kept as its_id for backward compatibility
-        
+
         if not user_id or len(user_id) != 8 or not user_id.isdigit():
             return render_template_string(LOGIN_TEMPLATE, error="Please enter a valid 8-digit ITS/Majlis ID.")
-        
-        # Check ITS ID first
-        if is_its_id_valid(user_id):
+
+        # Check if ID exists in both ITS and Majlis tables
+        is_its_valid = is_its_id_valid(user_id)
+        is_majlis_valid = is_majlis_id_valid(user_id)
+
+        if is_its_valid and is_majlis_valid:
+            # ID exists in both tables - show role selection
+            print(f"Dual-access detected for user {user_id}")
+            return render_template_string(ROLE_SELECTION_TEMPLATE, user_id=user_id)
+
+        # Check ITS ID
+        elif is_its_valid:
             # Check if user is already logged in on another device
             if is_user_already_logged_in(user_id, 'its'):
                 print(f"Blocked login attempt for ITS user {user_id} - already logged in")
                 return render_template_string(LOGIN_TEMPLATE, error="This ITS ID is already logged in on another device. Only one device is allowed at a time. Contact admin if you need to force logout.")
-            
+
             session_token = create_session(user_id, 'its')
             if not session_token:
                 return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
-            
+
             print(f"Successfully created new session for ITS user {user_id}")
             response = redirect(url_for('webinar'))
             response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
             return response
-        
-        # Check Majlis ID if ITS ID not found
-        elif is_majlis_id_valid(user_id):
+
+        # Check Majlis ID
+        elif is_majlis_valid:
             # Check if user is already logged in on another device
             if is_user_already_logged_in(user_id, 'majlis'):
                 print(f"Blocked login attempt for Majlis user {user_id} - already logged in")
                 return render_template_string(LOGIN_TEMPLATE, error="This Majlis ID is already logged in on another device. Only one device is allowed at a time. Contact admin if you need to force logout.")
-            
+
             session_token = create_session(user_id, 'majlis')
             if not session_token:
                 return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
-            
+
             print(f"Successfully created new session for Majlis user {user_id}")
             response = redirect(url_for('majlis'))
             response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
             return response
-        
+
         else:
             return render_template_string(LOGIN_TEMPLATE, error="ID not authorized. Please contact the administrator.")
     
@@ -4168,6 +4741,58 @@ def majlis():
     else:
         return render_template_string(WEBINAR_TEMPLATE_IMPROVED, its_id=user_id, session_token=session_token, **webinar_data)
 
+@app.route('/select_role', methods=['POST'])
+def select_role():
+    """Handle role selection for dual-registered users"""
+    user_id = request.form.get('user_id', '').strip()
+    role = request.form.get('role', '').strip()
+
+    # Validate inputs
+    if not user_id or len(user_id) != 8 or not user_id.isdigit():
+        return redirect(url_for('index'))
+
+    if role not in ['its', 'majlis']:
+        return redirect(url_for('index'))
+
+    # Verify the user_id is valid for the selected role
+    if role == 'its':
+        if not is_its_id_valid(user_id):
+            return render_template_string(LOGIN_TEMPLATE, error="Invalid access. Please try again.")
+
+        # Check if already logged in
+        if is_user_already_logged_in(user_id, 'its'):
+            print(f"Blocked login attempt for ITS user {user_id} - already logged in")
+            return render_template_string(LOGIN_TEMPLATE, error="This ITS ID is already logged in on another device. Only one device is allowed at a time. Contact admin if you need to force logout.")
+
+        # Create ITS session
+        session_token = create_session(user_id, 'its')
+        if not session_token:
+            return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
+
+        print(f"Successfully created new ITS session for dual-access user {user_id}")
+        response = redirect(url_for('webinar'))
+        response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
+        return response
+
+    elif role == 'majlis':
+        if not is_majlis_id_valid(user_id):
+            return render_template_string(LOGIN_TEMPLATE, error="Invalid access. Please try again.")
+
+        # Check if already logged in
+        if is_user_already_logged_in(user_id, 'majlis'):
+            print(f"Blocked login attempt for Majlis user {user_id} - already logged in")
+            return render_template_string(LOGIN_TEMPLATE, error="This Majlis ID is already logged in on another device. Only one device is allowed at a time. Contact admin if you need to force logout.")
+
+        # Create Majlis session
+        session_token = create_session(user_id, 'majlis')
+        if not session_token:
+            return render_template_string(LOGIN_TEMPLATE, error="An error occurred during login. Please try again.")
+
+        print(f"Successfully created new Majlis session for dual-access user {user_id}")
+        response = redirect(url_for('majlis'))
+        response.set_cookie('session_token', session_token, httponly=True, max_age=86400)
+        return response
+
 @app.route('/logout')
 def logout():
     """Logout route - clear session"""
@@ -4177,7 +4802,7 @@ def logout():
         if session_info:
             print(f"User {session_info['user_id']} ({session_info['user_type']}) logged out")
         logout_session(session_token)
-    
+
     response = redirect(url_for('index'))
     response.delete_cookie('session_token')
     return response
@@ -5533,7 +6158,248 @@ with app.app_context():
     db.create_all()
     init_database()
 
+# Helper function to track user activity in Redis
+def update_user_activity(user_id, user_type):
+    """Update user's last activity timestamp in Redis"""
+    try:
+        activity_key = f"activity:{user_id}:{user_type}"
+        redis_client.setex(activity_key, 7200, datetime.now().isoformat())  # Store for 2 hours
+    except Exception as e:
+        print(f"Error updating activity for {user_id}: {e}")
+
+def get_user_last_activity(user_id, user_type):
+    """Get user's last activity timestamp from Redis"""
+    try:
+        activity_key = f"activity:{user_id}:{user_type}"
+        last_activity = redis_client.get(activity_key)
+        if last_activity:
+            return datetime.fromisoformat(last_activity)
+        return None
+    except Exception as e:
+        print(f"Error getting activity for {user_id}: {e}")
+        return None
+
+# WebSocket Event Handlers
+@socketio.on('connect')
+def handle_connect():
+    """Handle client WebSocket connection"""
+    # Get session token from cookies
+    session_token = request.cookies.get('session_token')
+    if session_token:
+        session_info = verify_session(session_token)
+        if session_info:
+            user_id = session_info['user_id']
+            user_type = session_info['user_type']
+
+            # Track connection activity
+            update_user_activity(user_id, user_type)
+
+            # Join user-specific room and type-specific room
+            join_room(f"user_{user_id}_{user_type}")
+            join_room(f"type_{user_type}")
+            join_room("all_users")
+
+            print(f"WebSocket: User {user_id} ({user_type}) connected")
+            emit('connection_established', {
+                'status': 'connected',
+                'user_id': user_id,
+                'user_type': user_type,
+                'timestamp': datetime.now().isoformat()
+            })
+
+            # Notify admins of new connection
+            socketio.emit('user_connected', {
+                'user_id': user_id,
+                'user_type': user_type,
+                'timestamp': datetime.now().isoformat()
+            }, room='admin_room')
+        else:
+            print("WebSocket: Connection rejected - invalid session")
+            disconnect()
+    else:
+        # Allow admin connections without user session
+        if request.args.get('admin') == 'true':
+            join_room('admin_room')
+            print("WebSocket: Admin connected")
+            emit('connection_established', {
+                'status': 'connected',
+                'role': 'admin',
+                'timestamp': datetime.now().isoformat()
+            })
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Handle client WebSocket disconnection"""
+    session_token = request.cookies.get('session_token')
+    if session_token:
+        session_info = verify_session(session_token)
+        if session_info:
+            user_id = session_info['user_id']
+            user_type = session_info['user_type']
+
+            # Track disconnection time
+            update_user_activity(user_id, user_type)
+
+            print(f"WebSocket: User {user_id} ({user_type}) disconnected")
+
+            # Notify admins
+            socketio.emit('user_disconnected', {
+                'user_id': user_id,
+                'user_type': user_type,
+                'timestamp': datetime.now().isoformat()
+            }, room='admin_room')
+
+@socketio.on('heartbeat')
+def handle_heartbeat(data):
+    """Handle client heartbeat for connection monitoring"""
+    session_token = request.cookies.get('session_token')
+    if session_token:
+        session_info = verify_session(session_token)
+        if session_info:
+            user_id = session_info['user_id']
+            user_type = session_info['user_type']
+
+            # Update activity timestamp on every heartbeat
+            update_user_activity(user_id, user_type)
+
+            emit('heartbeat_ack', {
+                'status': 'alive',
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            # Session expired, notify client to logout
+            emit('session_expired', {
+                'message': 'Your session has expired. Please login again.',
+                'redirect': url_for('index')
+            })
+            disconnect()
+
+@socketio.on('admin_broadcast')
+def handle_admin_broadcast(data):
+    """Handle admin broadcasts to users"""
+    # Verify admin session (you can add proper admin auth here)
+    message = data.get('message', '')
+    target = data.get('target', 'all_users')  # 'all_users', 'type_its', 'type_majlis'
+
+    if message:
+        socketio.emit('admin_message', {
+            'message': message,
+            'timestamp': datetime.now().isoformat()
+        }, room=target)
+        print(f"WebSocket: Admin broadcast to {target}: {message}")
+
+@socketio.on('request_stats')
+def handle_stats_request():
+    """Handle real-time stats request from admin"""
+    try:
+        # Get active sessions from Redis
+        its_sessions = 0
+        majlis_sessions = 0
+
+        for key in redis_client.scan_iter("sessions:*"):
+            session_data = redis_client.get(key)
+            if session_data:
+                session_info = json.loads(session_data)
+                if session_info.get('user_type') == 'its':
+                    its_sessions += 1
+                elif session_info.get('user_type') == 'majlis':
+                    majlis_sessions += 1
+
+        emit('stats_update', {
+            'its_active': its_sessions,
+            'majlis_active': majlis_sessions,
+            'total_active': its_sessions + majlis_sessions,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        print(f"Error getting stats: {e}")
+        emit('error', {'message': 'Failed to fetch stats'})
+
+# Helper function to notify users via WebSocket
+def notify_user(user_id, user_type, message, data=None):
+    """Send notification to specific user via WebSocket"""
+    socketio.emit('notification', {
+        'message': message,
+        'data': data or {},
+        'timestamp': datetime.now().isoformat()
+    }, room=f"user_{user_id}_{user_type}")
+
+# Helper function to broadcast to all users of a type
+def broadcast_to_type(user_type, event, data):
+    """Broadcast event to all users of a specific type (its/majlis)"""
+    socketio.emit(event, data, room=f"type_{user_type}")
+
+# Background task to check for inactive users and force logout after 1 hour
+def check_inactive_users():
+    """
+    Background task that runs every 5 minutes to check for inactive users.
+    Force logout users who have been inactive (no WebSocket activity) for more than 1 hour.
+    """
+    while True:
+        try:
+            print("Checking for inactive users...")
+            current_time = datetime.now()
+            inactive_threshold = timedelta(hours=1)
+
+            # Get all active sessions from Redis
+            inactive_count = 0
+            for key in redis_client.scan_iter("sessions:*"):
+                session_data = redis_client.get(key)
+                if session_data:
+                    session_info = json.loads(session_data)
+                    user_id = session_info.get('user_id')
+                    user_type = session_info.get('user_type')
+
+                    if user_id and user_type:
+                        # Get last activity timestamp
+                        last_activity = get_user_last_activity(user_id, user_type)
+
+                        if last_activity:
+                            # Calculate time since last activity
+                            time_inactive = current_time - last_activity
+
+                            if time_inactive > inactive_threshold:
+                                # User has been inactive for more than 1 hour - force logout
+                                session_token = key.replace('sessions:', '')
+
+                                print(f"Force logout: User {user_id} ({user_type}) - Inactive for {time_inactive}")
+
+                                # Delete the session from Redis
+                                logout_session(session_token)
+
+                                # Send force logout notification via WebSocket
+                                socketio.emit('force_logout', {
+                                    'message': 'You have been logged out due to inactivity for more than 1 hour. Please login again.',
+                                    'reason': 'inactivity',
+                                    'inactive_duration': str(time_inactive)
+                                }, room=f"user_{user_id}_{user_type}")
+
+                                # Clean up activity tracking
+                                redis_client.delete(f"activity:{user_id}:{user_type}")
+
+                                inactive_count += 1
+                        else:
+                            # No activity record found - user might have just logged in
+                            # Set initial activity timestamp
+                            update_user_activity(user_id, user_type)
+
+            if inactive_count > 0:
+                print(f"Forced logout {inactive_count} inactive user(s)")
+
+        except Exception as e:
+            print(f"Error in check_inactive_users: {e}")
+
+        # Sleep for 5 minutes before next check
+        import time
+        time.sleep(300)  # 300 seconds = 5 minutes
+
+# Start the background task in a separate thread
+import threading
+inactive_checker_thread = threading.Thread(target=check_inactive_users, daemon=True)
+inactive_checker_thread.start()
+print("Started background task: Inactive user checker (checks every 5 minutes)")
+
 # Only use Flask dev server for local development
 # In production (Railway), Gunicorn from Procfile will be used instead
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
