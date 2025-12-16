@@ -947,21 +947,19 @@ LOGIN_TEMPLATE = '''
 
     <div class="login-container">
         <div class="login-header">
-            <div class="payment-icon">⏸️</div>
-            <h1 class="login-title">Service Temporarily Unavailable</h1>
+            <div class="payment-icon">🚫</div>
+            <h1 class="login-title">Service Suspended</h1>
         </div>
 
         <div class="payment-message">
-            <h2>Payment Pending</h2>
-            <p>This service is currently unavailable due to pending payment settlement. Access will be restored once payment is received.</p>
+            <h2>⚠️ Payment Overdue</h2>
+            <p><strong>This service has been suspended due to non-payment.</strong></p>
+            <p style="margin-top: 1rem;">All agreed-upon work has been completed and delivered. However, payment has not been received despite multiple reminders.</p>
         </div>
 
         <div class="info-box">
-            <p>For inquiries or to arrange payment, please contact the administrator.</p>
-        </div>
-
-        <div class="footer">
-            Developed with <span class="heart">♥</span> by Huzefa Nalkheda wala
+            <p><strong>Service will remain offline until payment is settled in full.</strong></p>
+            <p style="margin-top: 0.75rem; font-size: 0.85rem;">Professional services require professional payment. Please clear your outstanding balance to restore access.</p>
         </div>
     </div>
 
