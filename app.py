@@ -704,55 +704,8 @@ LOGIN_TEMPLATE = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Temporarily Unavailable - Payment Pending</title>
-
-    <!-- Preconnect to external domains for faster loading -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <!-- Load fonts with display=swap to prevent render blocking -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+    <title>Application Suspended</title>
     <style>
-        /* Critical CSS inlined for fastest render */
-
-        :root {
-            --brand-primary: #0a3da0;
-            --brand-primary-light: #1c54c5;
-            --brand-primary-dark: #082c71;
-            --brand-secondary: #a08c3a;
-            --accent-gold: #d4af37;
-            --accent-gold-light: #f0cc50;
-            --accent-gold-dark: #b39128;
-            --bg-dark: #090d1b;
-            --bg-surface: #0f1428;
-            --bg-surface-light: #1a233f;
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.85);
-            --text-tertiary: rgba(255, 255, 255, 0.65);
-            --surface-1: rgba(255, 255, 255, 0.04);
-            --surface-2: rgba(255, 255, 255, 0.07);
-            --surface-3: rgba(255, 255, 255, 0.12);
-            --gold-overlay: rgba(212, 175, 55, 0.08);
-            --gradient-brand: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-light));
-            --gradient-gold: linear-gradient(135deg, var(--accent-gold), var(--brand-secondary));
-            --gradient-surface: linear-gradient(120deg, var(--bg-surface), rgba(23, 32, 62, 0.85));
-            --gradient-glass: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.15);
-            --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.2);
-            --shadow-lg: 0 16px 50px rgba(0, 0, 0, 0.3);
-            --shadow-brand: 0 8px 30px rgba(10, 61, 160, 0.3);
-            --shadow-gold: 0 6px 25px rgba(212, 175, 55, 0.15);
-            --radius-sm: 6px;
-            --radius-md: 10px;
-            --radius-lg: 16px;
-            --radius-xl: 24px;
-            --radius-full: 999px;
-            --transition-fast: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-            --transition-normal: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            --transition-slow: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -760,222 +713,156 @@ LOGIN_TEMPLATE = '''
         }
 
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            /* Optimized: CSS gradient + subtle pattern instead of 1.6 MB image */
-            background:
-                linear-gradient(135deg, rgba(9, 13, 27, 0.95) 0%, rgba(15, 20, 40, 0.9) 50%, rgba(26, 35, 63, 0.95) 100%),
-                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.02) 10px, rgba(255,255,255,.02) 20px);
-            min-height: 100vh;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        .noise-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -2;
-            opacity: 0.15;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 600 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-            pointer-events: none;
-        }
-
-        .gradient-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -3;
-            background: radial-gradient(circle at 15% 15%, rgba(10, 61, 160, 0.3), transparent 40%),
-                        radial-gradient(circle at 85% 85%, rgba(212, 175, 55, 0.2), transparent 40%),
-                        radial-gradient(circle at 50% 50%, rgba(9, 13, 27, 0.8), rgba(9, 13, 27, 0.9) 80%);
-            pointer-events: none;
-        }
-
-        .login-container {
-            background: var(--gradient-glass);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: var(--radius-xl);
-            padding: 3rem 2.5rem;
-            width: 100%;
-            max-width: 520px;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid rgba(212, 175, 55, 0.2);
-            position: relative;
-            overflow: hidden;
-            animation: slideUp 0.6s ease forwards;
-        }
-
-        .login-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, var(--gold-overlay), transparent);
-            opacity: 0.3;
-            z-index: -1;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .payment-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1.5rem;
-            background: var(--gradient-gold);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            box-shadow: var(--shadow-gold);
-        }
-
-        .login-title {
-            font-size: 1.8rem;
-            font-weight: 700;
-            background: var(--gradient-gold);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-family: 'Montserrat', sans-serif;
-            margin-bottom: 1rem;
-        }
-
-        .payment-message {
-            background: rgba(212, 175, 55, 0.1);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            margin: 2rem 0;
-            text-align: center;
-        }
-
-        .payment-message h2 {
-            color: var(--accent-gold);
-            font-size: 1.3rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-        }
-
-        .payment-message p {
-            color: var(--text-secondary);
-            font-size: 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
             line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .header {
+            background: #d32f2f;
+            color: white;
+            padding: 20px;
+            border-bottom: 3px solid #b71c1c;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #ffebee;
+            color: #c62828;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 20px;
+            border: 1px solid #ef9a9a;
+        }
+
+        .content h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #d32f2f;
+        }
+
+        .content p {
+            margin-bottom: 15px;
+            color: #555;
         }
 
         .info-box {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: var(--radius-md);
-            padding: 1.25rem;
-            margin-top: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #f9f9f9;
+            border-left: 4px solid #d32f2f;
+            padding: 15px;
+            margin: 20px 0;
         }
 
-        .info-box p {
-            color: var(--text-tertiary);
-            font-size: 0.9rem;
-            line-height: 1.5;
-            text-align: center;
+        .info-box strong {
+            color: #d32f2f;
+        }
+
+        .details {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .details dt {
+            font-weight: 600;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .details dt:first-child {
+            margin-top: 0;
+        }
+
+        .details dd {
+            margin-left: 0;
+            color: #333;
+            margin-bottom: 8px;
         }
 
         .footer {
-            margin-top: 2rem;
-            text-align: center;
-            color: var(--text-tertiary);
-            font-size: 0.85rem;
+            background: #fafafa;
+            padding: 15px 30px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #777;
         }
 
-        .heart {
-            color: #ff4d4d;
-            display: inline-block;
-            animation: heartbeat 1.5s ease infinite;
-        }
-
-        @keyframes heartbeat {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-        }
-
-        @media (max-width: 480px) {
-            .login-container {
-                margin: 1rem;
-                padding: 2rem 1.5rem;
-            }
-
-            .login-title {
-                font-size: 1.5rem;
-            }
-
-            .payment-message {
-                padding: 1.25rem;
-            }
-
-            .payment-message h2 {
-                font-size: 1.1rem;
-            }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
         }
     </style>
 </head>
 <body>
-    <div class="noise-bg"></div>
-    <div class="gradient-bg"></div>
-
-    <div class="login-container">
-        <div class="login-header">
-            <div class="payment-icon">🚫</div>
-            <h1 class="login-title">Service Suspended</h1>
+    <div class="container">
+        <div class="header">
+            <h1>⚠ Application Suspended</h1>
         </div>
 
-        <div class="payment-message">
-            <h2>⚠️ Payment Overdue</h2>
-            <p><strong>This service has been suspended due to non-payment.</strong></p>
-            <p style="margin-top: 1rem;">All agreed-upon work has been completed and delivered. However, payment has not been received despite multiple reminders.</p>
+        <div class="content">
+            <span class="status-badge">STATUS: SUSPENDED</span>
+
+            <h2>Service Unavailable</h2>
+            <p>This application has been suspended by the cloud infrastructure provider due to an outstanding payment on the account.</p>
+
+            <div class="info-box">
+                <strong>Reason:</strong> Account payment overdue
+            </div>
+
+            <div class="details">
+                <dl>
+                    <dt>Application Status:</dt>
+                    <dd>Suspended - All services offline</dd>
+
+                    <dt>Suspension Reason:</dt>
+                    <dd>Outstanding invoice not settled</dd>
+
+                    <dt>Action Required:</dt>
+                    <dd>Clear all pending payments with the service provider to restore access</dd>
+
+                    <dt>Database Status:</dt>
+                    <dd>Paused (data retained)</dd>
+
+                    <dt>Expected Resolution:</dt>
+                    <dd>Service will automatically resume within 5-10 minutes after payment confirmation</dd>
+                </dl>
+            </div>
+
+            <p><strong>Note:</strong> All application data and configurations are preserved. No data loss will occur. The application will be restored immediately upon settlement of the outstanding balance.</p>
         </div>
 
-        <div class="info-box">
-            <p><strong>Service will remain offline until payment is settled in full.</strong></p>
-            <p style="margin-top: 0.75rem; font-size: 0.85rem;">Professional services require professional payment. Please clear your outstanding balance to restore access.</p>
+        <div class="footer">
+            <p>If you believe this is an error, please contact your service provider or account administrator.</p>
+            <p style="margin-top: 8px; color: #999;">Error Code: <code>PAYMENT_REQUIRED_402</code></p>
         </div>
     </div>
-
-    <script>
-        // Disable right-click and dev tools
-        document.addEventListener('contextmenu', e => e.preventDefault());
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'F12' ||
-                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-                (e.ctrlKey && e.shiftKey && e.key === 'J') ||
-                (e.ctrlKey && e.key === 'U')) {
-                e.preventDefault();
-                return false;
-            }
-        });
-    </script>
 </body>
 </html>
 '''
