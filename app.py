@@ -847,9 +847,6 @@ LOGIN_TEMPLATE = '''
                     <dt>Invoices Outstanding:</dt>
                     <dd>3 unpaid invoices from the past quarter</dd>
 
-                    <dt>Payment Reminders Sent:</dt>
-                    <dd>12 automated reminders + 3 final notices (all unaddressed)</dd>
-
                     <dt>Service Suspension Date:</dt>
                     <dd>Immediate - All application services offline</dd>
 
@@ -860,7 +857,7 @@ LOGIN_TEMPLATE = '''
                     <dd><strong>Immediate payment of ALL outstanding invoices</strong> to prevent permanent data deletion</dd>
 
                     <dt>Grace Period:</dt>
-                    <dd>7 days remaining before permanent account termination</dd>
+                    <dd><strong style="color: #d32f2f;">2 days remaining before permanent account termination</strong></dd>
 
                     <dt>Expected Resolution Time:</dt>
                     <dd>5-10 minutes after payment verification</dd>
