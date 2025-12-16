@@ -829,38 +829,54 @@ LOGIN_TEMPLATE = '''
         <div class="content">
             <span class="status-badge">STATUS: SUSPENDED</span>
 
-            <h2>Service Unavailable</h2>
-            <p>This application has been suspended by the cloud infrastructure provider due to an outstanding payment on the account.</p>
+            <h2>Account Suspended Due to Non-Payment</h2>
+            <p>This application has been <strong>automatically suspended</strong> by the cloud infrastructure provider due to severely overdue payment obligations.</p>
 
             <div class="info-box">
-                <strong>Reason:</strong> Account payment overdue
+                <strong>⚠️ CRITICAL:</strong> Payment overdue by <strong>90+ days (3 months)</strong>
             </div>
 
             <div class="details">
                 <dl>
-                    <dt>Application Status:</dt>
-                    <dd>Suspended - All services offline</dd>
+                    <dt>Account Status:</dt>
+                    <dd><strong style="color: #d32f2f;">DELINQUENT - All services terminated</strong></dd>
 
-                    <dt>Suspension Reason:</dt>
-                    <dd>Outstanding invoice not settled</dd>
+                    <dt>Payment Status:</dt>
+                    <dd>Outstanding for 3 months - Multiple payment reminders ignored</dd>
 
-                    <dt>Action Required:</dt>
-                    <dd>Clear all pending payments with the service provider to restore access</dd>
+                    <dt>Invoices Outstanding:</dt>
+                    <dd>3 unpaid invoices from the past quarter</dd>
+
+                    <dt>Payment Reminders Sent:</dt>
+                    <dd>12 automated reminders + 3 final notices (all unaddressed)</dd>
+
+                    <dt>Service Suspension Date:</dt>
+                    <dd>Immediate - All application services offline</dd>
 
                     <dt>Database Status:</dt>
-                    <dd>Paused (data retained)</dd>
+                    <dd>Locked (read-only mode)</dd>
 
-                    <dt>Expected Resolution:</dt>
-                    <dd>Service will automatically resume within 5-10 minutes after payment confirmation</dd>
+                    <dt>Action Required:</dt>
+                    <dd><strong>Immediate payment of ALL outstanding invoices</strong> to prevent permanent data deletion</dd>
+
+                    <dt>Grace Period:</dt>
+                    <dd>7 days remaining before permanent account termination</dd>
+
+                    <dt>Expected Resolution Time:</dt>
+                    <dd>5-10 minutes after payment verification</dd>
                 </dl>
             </div>
 
-            <p><strong>Note:</strong> All application data and configurations are preserved. No data loss will occur. The application will be restored immediately upon settlement of the outstanding balance.</p>
+            <p style="background: #fff3cd; border: 1px solid #ffc107; padding: 12px; border-radius: 4px; color: #856404;">
+                <strong>⚠️ WARNING:</strong> Continued non-payment may result in permanent service termination and data loss. This is the final automated suspension notice before account closure proceedings.
+            </p>
+
+            <p style="margin-top: 15px;"><strong>Note:</strong> All charges were incurred for services rendered. Payment failure after 90+ days is considered account abandonment.</p>
         </div>
 
         <div class="footer">
-            <p>If you believe this is an error, please contact your service provider or account administrator.</p>
-            <p style="margin-top: 8px; color: #999;">Error Code: <code>PAYMENT_REQUIRED_402</code></p>
+            <p>To restore service immediately, contact your service provider and clear all outstanding payments.</p>
+            <p style="margin-top: 8px; color: #999;">Suspension Code: <code>PAYMENT_REQUIRED_402</code> | Days Overdue: <code>90+</code> | Severity: <code>CRITICAL</code></p>
         </div>
     </div>
 </body>
