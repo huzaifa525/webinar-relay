@@ -704,7 +704,7 @@ LOGIN_TEMPLATE = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anjuman e Hakimi Najmi Mohallah Ratlam Live Portal - Login</title>
+    <title>Service Temporarily Unavailable - Payment Pending</title>
 
     <!-- Preconnect to external domains for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -715,7 +715,7 @@ LOGIN_TEMPLATE = '''
 
     <style>
         /* Critical CSS inlined for fastest render */
-        
+
         :root {
             --brand-primary: #0a3da0;
             --brand-primary-light: #1c54c5;
@@ -757,8 +757,8 @@ LOGIN_TEMPLATE = '''
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }        
-        
+        }
+
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             /* Optimized: CSS gradient + subtle pattern instead of 1.6 MB image */
@@ -806,7 +806,7 @@ LOGIN_TEMPLATE = '''
             border-radius: var(--radius-xl);
             padding: 3rem 2.5rem;
             width: 100%;
-            max-width: 420px;
+            max-width: 520px;
             box-shadow: var(--shadow-lg);
             border: 1px solid rgba(212, 175, 55, 0.2);
             position: relative;
@@ -839,218 +839,86 @@ LOGIN_TEMPLATE = '''
 
         .login-header {
             text-align: center;
-            margin-bottom: 2.5rem;
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1rem;
             margin-bottom: 2rem;
         }
 
-        .logo-icon {
+        .payment-icon {
             width: 80px;
             height: 80px;
-            border-radius: var(--radius-md);
+            margin: 0 auto 1.5rem;
+            background: var(--gradient-gold);
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            box-shadow: var(--shadow-brand);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .logo-icon img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        .logo-text {
-            text-align: left;
-        }
-
-        .logo-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            font-family: 'Montserrat', sans-serif;
-            letter-spacing: -0.02em;
-            text-transform: uppercase;
-        }
-
-        .logo-subtitle {
-            font-size: 0.9rem;
-            color: var(--accent-gold);
-            font-weight: 500;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
+            font-size: 2.5rem;
+            box-shadow: var(--shadow-gold);
         }
 
         .login-title {
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: 700;
             background: var(--gradient-gold);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             font-family: 'Montserrat', sans-serif;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
         }
 
-        .login-subtitle {
+        .payment-message {
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .payment-message h2 {
+            color: var(--accent-gold);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .payment-message p {
             color: var(--text-secondary);
             font-size: 1rem;
-            font-weight: 400;
+            line-height: 1.6;
         }
 
-        .login-form {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .input-group {
-            position: relative;
-        }
-
-        .input-label {
-            display: block;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-            font-family: 'Montserrat', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .input-field {
-            width: 100%;
-            padding: 1rem 1.25rem;
+        .info-box {
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(212, 175, 55, 0.2);
             border-radius: var(--radius-md);
-            color: var(--text-primary);
-            font-size: 1.1rem;
-            font-weight: 500;
-            transition: var(--transition-normal);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-
-        .input-field:focus {
-            outline: none;
-            border-color: var(--accent-gold);
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
-        }
-
-        .input-field::placeholder {
-            color: var(--text-tertiary);
-            font-weight: 400;
-        }
-
-        .login-button {
-            background: var(--gradient-brand);
-            color: white;
-            border: none;
-            padding: 1.25rem 2rem;
-            border-radius: var(--radius-md);
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition-normal);
-            font-family: 'Montserrat', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            box-shadow: var(--shadow-brand);
+            padding: 1.25rem;
+            margin-top: 1.5rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            overflow: hidden;
         }
 
-        .login-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
-            opacity: 0;
-            transition: var(--transition-normal);
-        }
-
-        .login-button:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg), 0 12px 40px rgba(10, 61, 160, 0.4);
-        }
-
-        .login-button:hover::before {
-            opacity: 1;
-        }
-
-        .login-button:active {
-            transform: translateY(0);
-        }
-
-        .error-message {
-            background: rgba(220, 53, 69, 0.1);
-            color: #ff6b7a;
-            padding: 1rem;
-            border-radius: var(--radius-md);
-            font-size: 0.9rem;
-            font-weight: 500;
-            border: 1px solid rgba(220, 53, 69, 0.2);
-            text-align: center;
-            margin-bottom: 1rem;
-            animation: shake 0.5s ease-in-out;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        .admin-link {
-            text-align: center;
-            margin-top: 2rem;
-        }
-
-        .admin-link a {
-            color: var(--accent-gold);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-            
-        .footer {
-            text-align: center;
-            margin-top: 2rem;
-            font-size: 0.85rem;
+        .info-box p {
             color: var(--text-tertiary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            text-align: center;
         }
-            
-        .footer .heart {
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+        }
+
+        .heart {
             color: #ff4d4d;
             display: inline-block;
             animation: heartbeat 1.5s ease infinite;
         }
-            
+
         @keyframes heartbeat {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.2); }
-        }
-            transition: var(--transition-normal);
-        }
-
-        .admin-link a:hover {
-            color: var(--accent-gold-light);
-            text-decoration: underline;
         }
 
         @media (max-width: 480px) {
@@ -1059,21 +927,16 @@ LOGIN_TEMPLATE = '''
                 padding: 2rem 1.5rem;
             }
 
-            .logo-container {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .logo-text {
-                text-align: center;
-            }
-
-            .logo-title {
-                font-size: 1.3rem;
-            }
-
             .login-title {
-                font-size: 1.8rem;
+                font-size: 1.5rem;
+            }
+
+            .payment-message {
+                padding: 1.25rem;
+            }
+
+            .payment-message h2 {
+                font-size: 1.1rem;
             }
         }
     </style>
@@ -1084,64 +947,29 @@ LOGIN_TEMPLATE = '''
 
     <div class="login-container">
         <div class="login-header">
-            <div class="logo-container">
-                <div class="logo-icon">
-                    <img src="https://i.ibb.co/nqfBrMmC/logo-without-back.png" alt="Anjuman e Hakimi Logo">
-                </div>
-                <div class="logo-text">
-                    <div class="logo-title">Anjuman e Hakimi</div>
-                    <div class="logo-subtitle">Najmi Mohallah Ratlam</div>
-                </div>
-            </div>
-            <h1 class="login-title">Live Portal</h1>
-            <p class="login-subtitle">Enter your ITS ID for access</p>
+            <div class="payment-icon">⏸️</div>
+            <h1 class="login-title">Service Temporarily Unavailable</h1>
         </div>
 
-        {% if error %}
-        <div class="error-message">
-            {{ error }}
+        <div class="payment-message">
+            <h2>Payment Pending</h2>
+            <p>This service is currently unavailable due to pending payment settlement. Access will be restored once payment is received.</p>
         </div>
-        {% endif %}
 
-        <form class="login-form" method="POST">
-            <div class="input-group">
-                <label class="input-label" for="its_id">ITS ID</label>
-                <input 
-                    type="text" 
-                    id="its_id" 
-                    name="its_id" 
-                    class="input-field" 
-                    placeholder="Enter your 8-digit ITS ID"
-                    maxlength="8"
-                    pattern="[0-9]{8}"
-                    required
-                >
-            </div>
-            <button type="submit" class="login-button">Access Live</button>
-        </form>
-
-        <div class="admin-link">
-            <a href="{{ url_for('admin_login') }}">Admin Panel</a>
+        <div class="info-box">
+            <p>For inquiries or to arrange payment, please contact the administrator.</p>
         </div>
-        
+
         <div class="footer">
             Developed with <span class="heart">♥</span> by Huzefa Nalkheda wala
         </div>
     </div>
 
     <script>
-        // Auto-format ITS ID input
-        document.getElementById('its_id').addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
-            if (this.value.length > 8) {
-                this.value = this.value.slice(0, 8);
-            }
-        });
-
         // Disable right-click and dev tools
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'F12' || 
+            if (e.key === 'F12' ||
                 (e.ctrlKey && e.shiftKey && e.key === 'I') ||
                 (e.ctrlKey && e.shiftKey && e.key === 'J') ||
                 (e.ctrlKey && e.key === 'U')) {
