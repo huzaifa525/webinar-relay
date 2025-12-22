@@ -2589,7 +2589,42 @@ WEBINAR_TEMPLATE_IMPROVED = '''
             if (videoContainer) {
                 videoContainer.style.transition = 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
             }
-            
+
+            // ========== Screen Wake Lock (Automatic & Invisible) ==========
+            let wakeLock = null;
+
+            async function requestWakeLock() {
+                if ('wakeLock' in navigator) {
+                    try {
+                        wakeLock = await navigator.wakeLock.request('screen');
+
+                        wakeLock.addEventListener('release', () => {
+                            wakeLock = null;
+                        });
+                    } catch (err) {
+                        // Silently fail if wake lock not supported or denied
+                    }
+                }
+            }
+
+            // Automatically request wake lock on page load
+            requestWakeLock();
+
+            // Re-request if page becomes visible after being hidden
+            document.addEventListener('visibilitychange', async () => {
+                if (document.visibilityState === 'visible' && wakeLock === null) {
+                    await requestWakeLock();
+                }
+            });
+
+            // Release wake lock when page unloads
+            window.addEventListener('beforeunload', () => {
+                if (wakeLock !== null) {
+                    wakeLock.release().catch(() => {});
+                }
+            });
+            // ========== End Screen Wake Lock ==========
+
             console.log('Ratlam Relay Centre - Video player initialized successfully');
         });
 
@@ -3639,6 +3674,41 @@ MAJLIS_WEBINAR_TEMPLATE = '''
                 }
                 lastTouchEnd = now;
             }, false);
+
+            // ========== Screen Wake Lock (Automatic & Invisible) ==========
+            let wakeLock = null;
+
+            async function requestWakeLock() {
+                if ('wakeLock' in navigator) {
+                    try {
+                        wakeLock = await navigator.wakeLock.request('screen');
+
+                        wakeLock.addEventListener('release', () => {
+                            wakeLock = null;
+                        });
+                    } catch (err) {
+                        // Silently fail if wake lock not supported or denied
+                    }
+                }
+            }
+
+            // Automatically request wake lock on page load
+            requestWakeLock();
+
+            // Re-request if page becomes visible after being hidden
+            document.addEventListener('visibilitychange', async () => {
+                if (document.visibilityState === 'visible' && wakeLock === null) {
+                    await requestWakeLock();
+                }
+            });
+
+            // Release wake lock when page unloads
+            window.addEventListener('beforeunload', () => {
+                if (wakeLock !== null) {
+                    wakeLock.release().catch(() => {});
+                }
+            });
+            // ========== End Screen Wake Lock ==========
 
             console.log('Ratlam Relay Centre - Majlis Video player initialized successfully');
         });
