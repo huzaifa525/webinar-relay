@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ItsId {
+  id      String    @id @db.VarChar(8)
+  addedAt DateTime? @map("added_at") @db.Timestamp(6)
+
+  @@map("its_ids")
+}
+
+model MajlisId {
+  id      String    @id @db.VarChar(8)
+  addedAt DateTime? @map("added_at") @db.Timestamp(6)
+
+  @@map("majlis_ids")
+}
+
+model AdminCredential {
+  username     String @id @db.VarChar(50)
+  passwordHash String @map("password_hash") @db.VarChar(64)
+
+  @@map("admin_credentials")
+}
+
+model WebinarSetting {
+  id                 Int       @id @default(autoincrement())
+  youtubeVideoId     String    @map("youtube_video_id") @db.VarChar(50)
+  webinarTitle       String    @map("webinar_title") @db.VarChar(200)
+  webinarDescription String?   @map("webinar_description")
+  webinarDate        String?   @map("webinar_date") @db.VarChar(100)
+  webinarTime        String?   @map("webinar_time") @db.VarChar(100)
+  webinarSpeaker     String?   @map("webinar_speaker") @db.VarChar(200)
+  startTime          DateTime? @map("start_time") @db.Timestamp(6)
+  endTime            DateTime? @map("end_time") @db.Timestamp(6)
+  noWebinar          Boolean?  @map("no_webinar")
+
+  @@map("webinar_settings")
+}
+
+model MajlisWebinarSetting {
+  id                 Int       @id @default(autoincrement())
+  youtubeVideoId     String    @map("youtube_video_id") @db.VarChar(50)
+  webinarTitle       String    @map("webinar_title") @db.VarChar(200)
+  webinarDescription String?   @map("webinar_description")
+  webinarDate        String?   @map("webinar_date") @db.VarChar(100)
+  webinarTime        String?   @map("webinar_time") @db.VarChar(100)
+  webinarSpeaker     String?   @map("webinar_speaker") @db.VarChar(200)
+  startTime          DateTime? @map("start_time") @db.Timestamp(6)
+  endTime            DateTime? @map("end_time") @db.Timestamp(6)
+  noWebinar          Boolean?  @map("no_webinar")
+
+  @@map("majlis_webinar_settings")
+}
