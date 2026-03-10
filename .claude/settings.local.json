@@ -3,7 +3,13 @@
     "allow": [
       "Bash(python:*)",
       "Bash(find:*)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(npx prisma generate:*)",
+      "Bash(powershell:*)",
+      "WebFetch(domain:developers.google.com)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

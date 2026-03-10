@@ -395,7 +395,7 @@ export default function AdminDashboard() {
           <div className="flex gap-2 mt-6 overflow-x-auto pb-1">
             {[
               { key: 'overview' as TabType, label: 'Dashboard', icon: 'fas fa-chart-line' },
-              { key: 'its' as TabType, label: 'Asbaaq', icon: 'fas fa-mosque' },
+              // { key: 'its' as TabType, label: 'Asbaaq', icon: 'fas fa-mosque' }, // Temporarily disabled
               { key: 'majlis' as TabType, label: 'Majlis', icon: 'fas fa-users' },
               { key: 'sessions' as TabType, label: 'Active Sessions', icon: 'fas fa-signal' },
             ].map((tab) => (
@@ -435,7 +435,8 @@ export default function AdminDashboard() {
 
         {/* Tab Content */}
         {activeTab === 'overview' && <OverviewTab stats={stats} sessions={sessions} onClearSessions={clearAllSessions} />}
-        {activeTab === 'its' && (
+        {/* Asbaaq tab temporarily disabled */}
+        {/* {activeTab === 'its' && (
           <ItsManagementTab
             ids={filteredItsIds}
             allIds={itsIds}
@@ -452,7 +453,7 @@ export default function AdminDashboard() {
             onDeleteAll={deleteAllItsIds}
             onUpdateSettings={(formData) => updateWebinarSettings('its', formData)}
           />
-        )}
+        )} */}
         {activeTab === 'majlis' && (
           <MajlisManagementTab
             ids={filteredMajlisIds}

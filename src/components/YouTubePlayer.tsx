@@ -22,7 +22,7 @@ export default function YouTubePlayer({ settings, userId, userType }: YouTubePla
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const { notifications, addNotification, removeNotification } = useNotifications();
 
@@ -120,19 +120,10 @@ export default function YouTubePlayer({ settings, userId, userType }: YouTubePla
   }, []);
 
   useEffect(() => {
-    const T = 30 * 60 * 1000;
-    const r = () => { if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current); inactivityTimerRef.current = setTimeout(async () => { alert('Session expired due to inactivity.'); await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/'; }, T); };
-    const ev = ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
-    ev.forEach(e => document.addEventListener(e, r)); r();
-    return () => { ev.forEach(e => document.removeEventListener(e, r)); if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current); };
-  }, []);
-
-  useEffect(() => {
-    const hb = setInterval(async () => { try { const r = await fetch('/api/auth/status'); const d = await r.json(); if (!d.logged_in) { addNotification('error', 'Session expired. Redirecting...'); setTimeout(() => { window.location.href = '/'; }, 2000); } } catch {} }, 30000);
     addNotification('success', 'Connected to webinar stream');
     const sse = new EventSource('/api/auth/events');
     sse.onmessage = (ev) => { try { const { type } = JSON.parse(ev.data); if (type === 'force_logout') { addNotification('warning', 'Logged out by administrator'); setTimeout(async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/'; }, 2000); } } catch {} };
-    return () => { clearInterval(hb); sse.close(); };
+    return () => { sse.close(); };
   }, [addNotification]);
 
   return (
