@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isItsIdValid, isMajlisIdValid } from '@/lib/cache';
-import { createSession, isUserAlreadyLoggedIn } from '@/lib/session';
+import { createSession, isUserAlreadyLoggedIn, removeExistingUserSessions } from '@/lib/session';
 import { isValidId } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user_id, selected_role } = body;
+    const { user_id, selected_role, force_login } = body;
 
     if (!user_id || !isValidId(user_id)) {
       return NextResponse.json(
@@ -15,51 +15,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [isIts, isMajlis] = await Promise.all([
-      isItsIdValid(user_id),
-      isMajlisIdValid(user_id),
-    ]);
+    // Asbaaq (ITS) module temporarily disabled — only check Majlis
+    const isMajlis = await isMajlisIdValid(user_id);
 
-    // If neither found
-    if (!isIts && !isMajlis) {
+    if (!isMajlis) {
       return NextResponse.json(
         { success: false, error: 'Access denied. Your ID is not authorized.' },
         { status: 403 }
       );
     }
 
-    // Dual-access: both ITS and Majlis - need role selection
-    if (isIts && isMajlis && !selected_role) {
-      return NextResponse.json({
-        success: true,
-        redirect: '/select-role',
-        dual_access: true,
-      });
-    }
-
-    // Determine user type
-    let userType: 'its' | 'majlis';
-    let redirectPath: string;
-
-    if (selected_role) {
-      // Role was selected (dual-access flow)
-      userType = selected_role as 'its' | 'majlis';
-      redirectPath = userType === 'its' ? '/webinar' : '/majlis';
-    } else if (isIts) {
-      userType = 'its';
-      redirectPath = '/webinar';
-    } else {
-      userType = 'majlis';
-      redirectPath = '/majlis';
-    }
+    // Determine user type — only Majlis active
+    const userType: 'its' | 'majlis' = 'majlis';
+    const redirectPath = '/majlis';
 
     // Check device restriction
     const alreadyLoggedIn = await isUserAlreadyLoggedIn(user_id, userType);
     if (alreadyLoggedIn) {
-      return NextResponse.json(
-        { success: false, error: 'This ID is already logged in on another device. Please logout first or use force logout.' },
-        { status: 409 }
-      );
+      if (force_login) {
+        // User chose to logout from all devices and login here
+        await removeExistingUserSessions(user_id, userType);
+      } else {
+        return NextResponse.json(
+          { success: false, already_logged_in: true, error: 'This ID is already logged in on another device.' },
+          { status: 409 }
+        );
+      }
     }
 
     // Create session

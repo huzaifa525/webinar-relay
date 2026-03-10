@@ -8,6 +8,7 @@ export default function LoginForm() {
   const [userId, setUserId] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showForceLogin, setShowForceLogin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -38,8 +39,8 @@ export default function LoginForm() {
     if (error) setError('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent, forceLogin = false) => {
+    if (e) e.preventDefault();
 
     if (userId.length !== 8) {
       setError('Please enter a valid 8-digit ID');
@@ -48,12 +49,13 @@ export default function LoginForm() {
 
     setIsLoading(true);
     setError('');
+    setShowForceLogin(false);
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify({ user_id: userId, force_login: forceLogin }),
       });
 
       const data = await res.json();
@@ -64,6 +66,9 @@ export default function LoginForm() {
         } else {
           router.push(data.redirect);
         }
+      } else if (data.already_logged_in) {
+        setShowForceLogin(true);
+        setError('This ID is already logged in on another device.');
       } else {
         setError(data.error || 'Access denied. Your ID is not authorized.');
       }
@@ -104,9 +109,21 @@ export default function LoginForm() {
 
           {error && (
             <div className="login-error">
-              <i className="fas fa-exclamation-circle" />
+              <i aria-hidden="true" className="fas fa-exclamation-circle" />
               <span>{error}</span>
             </div>
+          )}
+
+          {showForceLogin && (
+            <button
+              type="button"
+              onClick={() => handleSubmit(undefined, true)}
+              disabled={isLoading}
+              className="login-force-btn"
+            >
+              <i aria-hidden="true" className="fas fa-sign-out-alt" />
+              Logout from all devices &amp; Login here
+            </button>
           )}
 
           <form onSubmit={handleSubmit}>
@@ -262,6 +279,33 @@ export default function LoginForm() {
           color: #ef4444;
           font-size: 13px;
           animation: shake 0.4s ease;
+        }
+
+        /* Force login button */
+        .login-force-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px 16px;
+          margin-bottom: 18px;
+          background: rgba(10, 61, 160, 0.15);
+          border: 1px solid rgba(10, 61, 160, 0.3);
+          border-radius: 10px;
+          color: #5b9aff;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .login-force-btn:hover:not(:disabled) {
+          background: rgba(10, 61, 160, 0.25);
+          border-color: rgba(10, 61, 160, 0.5);
+        }
+        .login-force-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
         }
 
         /* Field */
